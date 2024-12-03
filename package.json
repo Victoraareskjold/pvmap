@@ -9,9 +9,15 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "dotenv": "^16.4.5",
+    "leaflet": "^1.9.4",
+    "leaflet-webatlastile": "^2.1.1",
+    "next": "15.0.3",
+    "node": "^20.18.1",
+    "node-fetch": "^3.3.2",
     "react": "19.0.0-rc-66855b96-20241106",
     "react-dom": "19.0.0-rc-66855b96-20241106",
-    "next": "15.0.3"
+    "react-leaflet": "^4.2.1"
   },
   "devDependencies": {
     "postcss": "^8",
