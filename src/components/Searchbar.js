@@ -23,6 +23,7 @@ export default function Searchbar() {
           },
         }));
         setResults(suggestions);
+        console.log(data);
       } catch (error) {
         console.log("Søkeforespørsel feilet: ", error);
       }
