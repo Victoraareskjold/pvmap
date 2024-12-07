@@ -8,7 +8,7 @@ export async function GET(req) {
   const aspect = parseFloat(searchParams.get("aspect")); // Retning (azimuth)
   const angle = parseFloat(searchParams.get("angle")); // Vinkel (tilt)
 
-  const panelWattage = 410;
+  const panelWattage = searchParams.get("panelWattage");
   const peakpower = (panelCount * panelWattage) / 1000;
 
   // Beregn system loss basert på panelCount

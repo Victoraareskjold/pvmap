@@ -17,11 +17,26 @@ export default function Map() {
   const address = searchParams.get("address");
   const addressId = searchParams.get("addressId");
 
+  const [selectedRoofType, setSelectedRoofType] = useState(
+    "Takstein (Dobbelkrummet)"
+  );
+  const [selectedPanelType, setSelectedPanelType] = useState("Premium - 410 W");
+
   const [combinedData, setCombinedData] = useState([]);
+  const [adjustedPanelCounts, setAdjustedPanelCounts] = useState({});
+  const [isChecked, setIsChecked] = useState({});
 
   const [yearlyProd, setYearlyProd] = useState(0);
   const [potentialSaving, setPotentialSaving] = useState(0);
   const [yearlyCost, setYearlyCost] = useState(0);
+
+  const handleRoofTypeChange = (value) => {
+    setSelectedRoofType(value);
+  };
+
+  const handlePanelTypeChange = (value) => {
+    setSelectedPanelType(value);
+  };
 
   useEffect(() => {
     if (!addressId) return;
@@ -68,12 +83,18 @@ export default function Map() {
 
           const apiUrl = `/api/pvgis?lat=${lat}&lng=${lng}&panelCount=${
             data.panels.panelCount
-          }&aspect=${data.direction - 180}&angle=${data.angle}`;
+          }&aspect=${data.direction - 180}&angle=${
+            data.angle
+          }&panelWattage=${getNumbers(selectedPanelType)}`;
           try {
             const response = await fetch(apiUrl);
             if (!response.ok) throw new Error("Feil i PVGIS API");
             const pvData = await response.json();
-            return { ...data, pv: pvData };
+
+            const efficiencyPerPanel =
+              pvData.outputs.totals.fixed.E_y / data.panels.panelCount;
+
+            return { ...data, pv: pvData, efficiencyPerPanel };
           } catch (error) {
             console.error("Feil ved henting av PVGIS-data:", error.message);
             return { ...data, pv: null };
@@ -83,12 +104,26 @@ export default function Map() {
         // 4. Kombiner alt og oppdater tilstand
         const fullData = await Promise.all(pvPromises);
         setCombinedData(fullData);
+
+        // 5. Sett initiale verdier for adjustedPanelCounts
+        const initialPanelCounts = fullData.reduce((acc, roof) => {
+          acc[roof.id] = roof.panels.panelCount; // Bruk opprinnelig panelCount
+          return acc;
+        }, {});
+        setAdjustedPanelCounts(initialPanelCounts);
+
+        // 6. Sett alle takflater til checked
+        const intitialChecked = fullData.reduce((acc, roof) => {
+          acc[roof.id] = true;
+          return acc;
+        }, {});
+        setIsChecked(intitialChecked);
       } catch (error) {
         console.error("Feil under datahåndtering :", error.message);
       }
     };
     fetchData();
-  }, [addressId, lat, lng]);
+  }, [selectedPanelType, addressId, lat, lng]);
 
   useEffect(() => {
     let map;
@@ -120,7 +155,6 @@ export default function Map() {
 
               let color;
               let yearlyOutput = roof.pv.outputs.totals.fixed.E_y / roof.area;
-              console.log(yearlyOutput);
 
               if (yearlyOutput < 100) {
                 color = "red";
@@ -166,19 +200,53 @@ export default function Map() {
     }
   };
 
-  console.log(combinedData, "combined data");
+  const toggleRoof = (roofId, isCheckedNow) => {
+    setIsChecked((prev) => ({
+      ...prev,
+      [roofId]: isCheckedNow,
+    }));
+
+    setAdjustedPanelCounts((prev) => ({
+      ...prev,
+      [roofId]: isCheckedNow
+        ? combinedData.find((r) => r.id === roofId)?.panels.panelCount
+        : 0,
+    }));
+  };
+
+  useEffect(() => {
+    const totalProduction = combinedData.reduce((sum, roof) => {
+      if (isChecked[roof.id]) {
+        const adjustedCount =
+          adjustedPanelCounts[roof.id] || roof.panels.panelCount;
+        const roofProduction = (roof.efficiencyPerPanel || 0) * adjustedCount;
+        return sum + roofProduction;
+      }
+      return sum;
+    }, 0);
+
+    setYearlyProd(totalProduction);
+  }, [adjustedPanelCounts, isChecked, combinedData]);
+
+  const getNumbers = (str) => {
+    let matches = str.match(/(\d+)/);
+
+    if (matches) {
+      return matches[0];
+    }
+  };
 
   return (
-    <div className="flex flex-row m-w-5xl w-full">
+    <div className="flex flex-col m-w-5xl w-full md:flex-row gap-2">
       {/* Map */}
       <div>
-        <div id="map" style={{ width: "50vw", aspectRatio: 1 / 1 }}></div>
+        <div id="map" className="map"></div>
       </div>
 
       {/* Info */}
       <div className="flex flex-col gap-4 p-4 w-full">
         <h1>Adresse: {address}</h1>
-        <div className="flex flex-row gap-8">
+        <div className="flex flex-row gap-8 md:flex-col xl:flex-row">
           <SelectOption
             title="Taktype:"
             options={[
@@ -193,10 +261,12 @@ export default function Map() {
               "Decra",
               "Bølgeblikk",
             ]}
+            onSelect={handleRoofTypeChange}
           />
           <SelectOption
             title="Paneltype:"
             options={["Premium - 410 W", "Pro - 440 W", "Max Power - 455 W"]}
+            onSelect={handlePanelTypeChange}
           />
         </div>
         <p>
@@ -205,48 +275,93 @@ export default function Map() {
 
         {combinedData.length > 0 && (
           <ul>
-            {combinedData.map((roof, index) => (
-              <li key={index} className="p-2 cursor-pointer">
-                <div className="flex flex-row">
-                  <input type="checkbox" defaultChecked></input>
-                  <p>Tak {roof.id + 1}</p>
-                  <p className="bg-orange-500 p-1 rounded-md border border-white text-white">
-                    {roof.panels.panelCount}
-                  </p>
-                  <p className="border border-black rounded-full w-8 h-8">
-                    {evaluateDirection(roof.direction)}
-                  </p>
-                </div>
+            {combinedData.map((roof, index) => {
+              const adjustedCount =
+                adjustedPanelCounts[roof.id] ?? roof.panels.panelCount;
 
-                <div className="w-full bg-black h-px"></div>
-              </li>
-            ))}
+              return roof.panels.panelCount >= 6 ? (
+                <li key={index} className="cursor-pointer">
+                  <div className="flex flex-row w-full gap-8 py-4">
+                    {/* Check */}
+                    <input
+                      type="checkbox"
+                      className="scale-150"
+                      checked={isChecked[roof.id]}
+                      onChange={(e) => toggleRoof(roof.id, e.target.checked)}
+                    ></input>
+
+                    {/* Tak */}
+                    <p className="shrink-0 self-center">Tak {roof.id + 1}</p>
+
+                    {/* Slider */}
+                    <input
+                      type="range"
+                      min="6"
+                      max={roof.panels.panelCount}
+                      className="w-full sliderStyling self-center"
+                      value={adjustedCount}
+                      disabled={!isChecked[roof.id]}
+                      onChange={(e) => {
+                        const newValue = Number(e.target.value);
+                        setAdjustedPanelCounts((prev) => ({
+                          ...prev,
+                          [roof.id]: newValue,
+                        }));
+                      }}
+                    />
+
+                    {/* Panelcount */}
+                    <p className="bg-orange-500 p-1 rounded-md border border-white text-white shrink-0 min-w-24 text-center">
+                      {adjustedCount} paneler
+                    </p>
+
+                    {/* Direction */}
+                    <p className="border border-black border-2 rounded-full w-8 h-8 shrink-0 text-center self-center flex items-center justify-center">
+                      {evaluateDirection(roof.direction)}
+                    </p>
+                  </div>
+
+                  {/* Divider */}
+                  {index < combinedData.length - 1 && (
+                    <div className="w-full bg-black h-px"></div>
+                  )}
+                </li>
+              ) : null;
+            })}
           </ul>
         )}
 
-        <div className="flex flex-row gap-4">
-          <p>Sum paneler (Premium 410W): </p>
-          <p className="bg-orange-500 p-2 rounded-md border border-white text-white"></p>
+        <div className="flex flex-row gap-4 justify-between">
+          <p className="self-center">Sum paneler ({selectedPanelType}):</p>
+          <p className="bg-orange-500 p-2 rounded-md border border-white text-white">
+            {Object.values(adjustedPanelCounts).reduce(
+              (total, count) => total + count,
+              0
+            )}{" "}
+            paneler
+          </p>
         </div>
         <p>
           Panelene leveres med 30 års produkt- og effektgaranti. Prisen
           inkluderer alt fra A-Å, uten skjulte kostnader – komplett
           solcelleanlegg.
         </p>
-        <div>
-          <div className="flex flex-row justify-between">
+
+        <ul>
+          <li className="flex flex-row justify-between">
             <div>Din forventet årlig strømproduksjon (kWh): </div>
-            <div className="text-end">{yearlyProd}</div>
-          </div>
-          <div className="flex flex-row justify-between">
+            <div className="text-end">{yearlyProd.toFixed(0)} kWh</div>
+          </li>
+          <li className="flex flex-row justify-between">
             <div>Din forventet årlig besparelse/inntekt: </div>
-            <div className="text-end">{potentialSaving}</div>
-          </div>
-          <div className="flex flex-row justify-between">
+            <div className="text-end">{potentialSaving} Kr</div>
+          </li>
+          <li className="flex flex-row justify-between">
             <div>Din forventet kostnad per år: </div>
-            <div className="text-end">{yearlyCost}</div>
-          </div>
-        </div>
+            <div className="text-end">{yearlyCost} Kr</div>
+          </li>
+        </ul>
+
         <button className="bg-red-500">Jeg ønsker tilbud</button>
       </div>
       {/* End of info */}
