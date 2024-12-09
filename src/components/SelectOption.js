@@ -18,7 +18,7 @@ export default function SelectOption({ title, options = [], onSelect }) {
       <label>{title}</label>
       <select
         id="optionContainer"
-        className="border border-orange-500 rounded-md p-1"
+        className="border border-orange-500 rounded-md p-1 text-sm"
         value={selectedOption}
         onChange={handleChange}
       >

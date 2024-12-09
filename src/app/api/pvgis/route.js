@@ -5,27 +5,25 @@ export async function GET(req) {
   const lat = searchParams.get("lat");
   const lng = searchParams.get("lng");
   const panelCount = parseInt(searchParams.get("panelCount"));
-  const aspect = parseFloat(searchParams.get("aspect")); // Retning (azimuth)
-  const angle = parseFloat(searchParams.get("angle")); // Vinkel (tilt)
+  const aspect = parseFloat(searchParams.get("aspect"));
+  const angle = parseFloat(searchParams.get("angle"));
 
   const panelWattage = searchParams.get("panelWattage");
   const peakpower = (panelCount * panelWattage) / 1000;
 
-  // Beregn system loss basert på panelCount
   let systemLoss = 0;
 
   if (panelCount <= 10) {
-    systemLoss = 5; // 5% loss for 0–10 paneler
+    systemLoss = 5;
   } else if (panelCount <= 30) {
-    systemLoss = 7; // 7% loss for 10–30 paneler
+    systemLoss = 7;
   } else if (panelCount <= 70) {
-    systemLoss = 10; // 10% loss for 30–70 paneler
+    systemLoss = 10;
   } else {
-    systemLoss = 12; // 12% loss for panelCount > 70
+    systemLoss = 12;
   }
 
-  // Beregn total system loss
-  const loss = 14 + systemLoss; // Base loss + system loss
+  const loss = 14 + systemLoss;
 
   if (!lat || !lng || !panelCount || !aspect || !angle) {
     return new Response(
