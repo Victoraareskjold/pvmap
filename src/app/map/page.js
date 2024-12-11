@@ -1,19 +1,21 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import L, { popup } from "leaflet";
-import "leaflet/dist/leaflet.css";
-import "leaflet-webatlastile";
-import SelectOption from "@/components/SelectOption";
-import {
-  webatlasTileLayer,
-  WebatlasTileLayerTypes,
-} from "leaflet-webatlastile";
-import PriceEstimator from "@/components/PriceEstimator";
+import { Suspense, useEffect, useState } from "react";
+
+import SelectOption from "../../components/SelectOption";
+
+import PriceEstimator from "../../components/PriceEstimator";
 import Image from "next/image";
-import SendModal from "@/components/SendModal";
-import InfoModal from "@/components/InfoModal";
+import SendModal from "../../components/SendModal";
+import InfoModal from "../../components/InfoModal";
 import { useRouter } from "next/navigation";
+
+import dynamic from "next/dynamic";
+
+// Dynamisk import av kartkomponenten
+const MapComponent = dynamic(() => import("../../components/MapComponent"), {
+  ssr: false,
+});
 
 export default function Map() {
   const searchParams = useSearchParams();
@@ -239,158 +241,6 @@ export default function Map() {
     fetchData();
   }, [totalPanels]);
 
-  useEffect(() => {
-    let map;
-    let currentLayer;
-
-    if (lat && lng && apiKey) {
-      if (L.DomUtil.get("map")?._leaflet_id) {
-        L.DomUtil.get("map")._leaflet_id = null;
-      }
-      map = L.map("map").setView([lat, lng], 25);
-
-      // Opprett AERIAL og HYBRID kartlag
-      const aerialLayer = webatlasTileLayer({
-        apiKey: apiKey,
-        mapType: WebatlasTileLayerTypes.AERIAL,
-      });
-
-      const greyLayer = webatlasTileLayer({
-        apiKey: apiKey,
-        mapType: WebatlasTileLayerTypes.GREY,
-      });
-
-      currentLayer = aerialLayer;
-      currentLayer.addTo(map);
-
-      // Lag en tilpasset kontroll
-      const LayerToggleControl = L.Control.extend({
-        onAdd: function () {
-          const button = L.DomUtil.create("img", "layer-toggle-button");
-          button.src = "/layers.png";
-          button.alt = "Endre karttype";
-          button.style.cursor = "pointer";
-          button.style.backgroundColor = "white";
-          button.style.border = "1px solid black";
-          button.style.borderRadius = "4px";
-          button.style.width = "32px";
-          button.style.height = "32px";
-
-          button.onclick = () => {
-            // Fjern nåværende lag
-            map.removeLayer(currentLayer);
-
-            // Bytt lag
-            if (currentLayer === aerialLayer) {
-              currentLayer = greyLayer;
-            } else {
-              currentLayer = aerialLayer;
-            }
-
-            // Legg til det nye laget
-            currentLayer.addTo(map);
-          };
-
-          return button;
-        },
-      });
-
-      // Legg til kontrollen i kartet
-      map.addControl(new LayerToggleControl({ position: "topright" }));
-
-      if (combinedData.length > 0) {
-        combinedData.forEach((roof) => {
-          /* if (roof.panels.panelCount <= minPanels) {
-            return;
-          } */
-          try {
-            const coordinates = JSON.parse(roof.coordinates);
-
-            if (
-              coordinates &&
-              coordinates.coordinates &&
-              coordinates.coordinates[0]
-            ) {
-              const cleanedCoordinates = coordinates.coordinates[0].map(
-                ([lng, lat]) => [lat, lng]
-              );
-
-              function getColorCategory(azimuth, tilt) {
-                if (Math.abs(azimuth) <= 10 && tilt >= 20 && tilt <= 60) {
-                  return "#FF1F1F"; // Svært god
-                } else if (
-                  Math.abs(azimuth) <= 30 &&
-                  tilt >= 20 &&
-                  tilt <= 60
-                ) {
-                  return "#FC6A20"; // God
-                } else if (Math.abs(azimuth) <= 90 && tilt >= 0 && tilt <= 60) {
-                  return "#FFF53C"; // Middels
-                } else if (
-                  Math.abs(azimuth) <= 120 &&
-                  tilt >= 10 &&
-                  tilt <= 80
-                ) {
-                  return "#BAE242"; // Under middels
-                } else {
-                  return "#5178DB"; // Dårlig
-                }
-              }
-
-              /* Min løsning */
-              /* let color;
-              let yearlyOutput = roof.pv?.outputs.totals.fixed.E_y / roof.area;
-
-              if (yearlyOutput < 125) {
-                color = "red";
-              } else if (yearlyOutput < 275) {
-                color = "orange";
-              } else color = "green"; */
-
-              /* const polygon = L.polygon(cleanedCoordinates, {
-                color: "black",
-                fillColor: isChecked[roof.id] ? color : "grey",
-                fillOpacity: isChecked[roof.id] ? 1 : 0.5,
-                weight: 1,
-              }).addTo(map); */
-
-              const polygon = L.polygon(cleanedCoordinates, {
-                color: "black",
-                fillColor: getColorCategory(roof.direction - 180, roof.angle),
-
-                fillOpacity: 1,
-                weight: isChecked[roof.id] ? 4 : 1,
-              }).addTo(map);
-
-              polygon.on("click", () => {
-                if (roof.panels.panelCount < minPanels) {
-                  const infoPopup = L.popup()
-                    .setLatLng(polygon.getBounds().getCenter())
-                    .setContent("<p>Denne takflaten er for liten.</p>")
-                    .openOn(map);
-                  return;
-                }
-
-                toggleRoof(roof.id, !isChecked[roof.id]);
-              });
-            } else {
-              console.warn(
-                "Koordinater er ikke tilgjengelige for takflate:",
-                roof.id
-              );
-            }
-          } catch (error) {
-            console.error("Feil ved parsing av koordinater:", error);
-          }
-        });
-      }
-    }
-
-    return () => {
-      if (map) map.remove();
-    };
-  }, [lat, lng, combinedData, isChecked, apiKey]);
-
   const evaluateDirection = (direction) => {
     const normalizedDirection = direction % 360;
 
@@ -448,7 +298,7 @@ export default function Map() {
   };
 
   const checkedRoofData = combinedData
-    .filter((roof) => isChecked[roof.id]) // Filtrer takflater som er merket (checked)
+    .filter((roof) => isChecked[roof.id])
     .reduce((acc, roof) => {
       acc[roof.id] = {
         roofId: roof.id,
@@ -485,228 +335,239 @@ export default function Map() {
 
   return (
     <div className="flex flex-col w-full md:flex-row gap-2">
-      {/* Map */}
-      <div className="w-full relative">
-        <img
-          src="/colorGrading.png"
-          className="absolute z-20 w-20 right-3 top-12 rounded-md hidden md:block"
-        />
-        <div
-          id="map"
-          className="map z-10 w-lvw aspect-square md:w-full md:aspect-auto"
-        ></div>
-        <PriceEstimator onSelect={handleSelectedElPrice} />
-      </div>
-      {/* Info */}
-      <div className="flex flex-col gap-8 p-4 w-full md:max-w-2xl">
-        <div className="flex flex-row justify-between">
-          <h1 className="text-xl">Adresse: {address}</h1>
+      <Suspense fallback={<div>Loading..</div>}>
+        <div className="w-full relative">
+          <img
+            src="/colorGrading.png"
+            className="absolute z-20 w-20 right-3 top-12 rounded-md hidden md:block"
+          />
+
+          <MapComponent
+            lat={lat}
+            lng={lng}
+            combinedData={combinedData}
+            isChecked={isChecked}
+            toggleRoof={toggleRoof}
+            adjustedPanelCounts={adjustedPanelCounts}
+            apiKey={apiKey}
+          />
+
+          <PriceEstimator onSelect={handleSelectedElPrice} />
+        </div>
+        {/* Info */}
+        <div className="flex flex-col gap-8 p-4 w-full md:max-w-2xl">
+          <div className="flex flex-row justify-between">
+            <h1 className="text-xl">Adresse: {address}</h1>
+            <button
+              className="bg-black text-white rounded-full text-sm py-1 px-2"
+              onClick={routeBack}
+            >
+              Nytt søk
+            </button>
+          </div>
+          <div className="flex flex-col gap-8 md:flex-col xl:flex-row">
+            <SelectOption
+              title="Taktype:"
+              options={[
+                "Takstein (Dobbelkrummet)",
+                "Takstein (Enkeltkrummet)",
+                "Glassert takstein",
+                "Flat takstein",
+                "Shingel/Takpapp",
+                "Trapes",
+                "Flatt tak",
+                "Integrert i taket",
+                "Decra",
+                "Bølgeblikk",
+              ]}
+              onSelect={handleRoofTypeChange}
+            />
+            <SelectOption
+              title="Paneltype:"
+              options={["Premium - 410 W", "Pro - 440 W", "Max Power - 455 W"]}
+              onSelect={handlePanelTypeChange}
+            />
+          </div>
+          <p className="text-sm">
+            Takflater på eiendommen - Sortert fra mest til minst solinnstråling
+          </p>
+
+          {combinedData.length > 0 && (
+            <ul>
+              {combinedData
+
+                .sort((a, b) => {
+                  const outputA = a.pv?.outputs.totals.fixed.E_y || 0;
+                  const outputB = b.pv?.outputs.totals.fixed.E_y || 0;
+                  return outputB - outputA;
+                })
+                .map((roof, index) => {
+                  const adjustedCount =
+                    adjustedPanelCounts[roof.id] ?? roof.panels.panelCount;
+
+                  if (roof.panels.panelCount >= minPanels) {
+                    const visibleIndex =
+                      combinedData
+                        .filter((r) => r.panels.panelCount >= 1)
+                        .findIndex((r) => r.id === roof.id) + 1;
+
+                    return (
+                      <li key={index} className="cursor-pointer">
+                        <div className="flex flex-row w-full gap-8 py-4">
+                          {/* Check */}
+                          <input
+                            type="checkbox"
+                            className="scale-150"
+                            checked={isChecked[roof.id]}
+                            onChange={(e) =>
+                              toggleRoof(roof.id, e.target.checked)
+                            }
+                          ></input>
+
+                          {/* Tak */}
+                          <p className="shrink-0 self-center text-xl">
+                            Tak {visibleIndex}
+                          </p>
+
+                          {/* Slider */}
+                          <input
+                            type="range"
+                            min="6"
+                            max={roof.panels.panelCount}
+                            className="w-full sliderStyling self-center"
+                            value={adjustedCount}
+                            disabled={!isChecked[roof.id]}
+                            onChange={(e) => {
+                              const newValue = Number(e.target.value);
+                              setAdjustedPanelCounts((prev) => ({
+                                ...prev,
+                                [roof.id]: newValue,
+                              }));
+                            }}
+                          />
+
+                          {/* Panelcount */}
+                          <p className="border-2 border-orange-500 p-1 rounded-md border text-black shrink-0 min-w-24 text-center">
+                            {adjustedCount} paneler
+                          </p>
+
+                          {/* Direction */}
+                          <p className="border border-black border-2 rounded-full w-8 h-8 shrink-0 text-center self-center flex items-center justify-center">
+                            {evaluateDirection(roof.direction)}
+                          </p>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="w-full bg-black h-px"></div>
+                      </li>
+                    );
+                  }
+                  return null;
+                })}
+            </ul>
+          )}
+
+          <div className="flex flex-row gap-4 justify-between">
+            <p className="self-center text-xl">
+              Sum paneler{" "}
+              <span className="font-medium">({selectedPanelType})</span>:
+            </p>
+            <p className="border-2 border-orange-500 p-2 rounded-md text-black">
+              {totalPanels} paneler
+            </p>
+          </div>
+          <p className="text-sm">
+            Panelene leveres med 30 års produkt- og effektgaranti. Prisen
+            inkluderer alt fra A-Å, uten skjulte kostnader – komplett
+            solcelleanlegg.
+          </p>
+
+          <ul className="flex flex-col gap-4">
+            <li className="flex flex-row justify-between font-light relative">
+              <InfoModal
+                isOpen={openModal === "modal1"}
+                onClose={handleCloseModal}
+                content="Estimert produksjon i kWh er basert på data fra PVGIS, som bruker værdata fra perioden 2005–2020. Ønsker du et mer nøyaktig estimat på din produksjon? Be om et helt uforpliktende tilbud fra oss. Med et varmere klima og mer sol i Norge de siste årene, kan du også forvente enda høyere produksjon enn det historiske data viser."
+              />
+              <div className="flex flex-row gap-2">
+                <Image
+                  onClick={() => handleOpenModal("modal1")}
+                  src="/info.svg"
+                  width={20}
+                  height={20}
+                  alt="info"
+                />
+                <p>Din forventet årlig strømproduksjon (kWh): </p>
+              </div>
+              <p className="text-end text-xl">{yearlyProd.toFixed(0)} kWh</p>
+            </li>
+            <li className="flex flex-row justify-between font-light relative">
+              <InfoModal
+                isOpen={openModal === "modal2"}
+                onClose={handleCloseModal}
+                content="Denne beregningen viser en estimert inntekt solcelleanlegget kan gi deg ved å redusere strømregningen. Bruk skyveknappen i boksen «Din estimerte gjennomsnittlige strømpris» for å justere og se hva du kan spare. Beregningen er basert på produksjon i kWh multiplisert med en estimert strømpris. Ønsker du et mer presist anslag? Be om et tilbud, så gir vi deg en tilpasset beregning av kWh-produksjonen for ditt hjem."
+              />
+              <div className="flex flex-row gap-2">
+                <Image
+                  onClick={() => handleOpenModal("modal2")}
+                  src="/info.svg"
+                  width={20}
+                  height={20}
+                  alt="info"
+                />
+                <p>Din forventet årlig besparelse/inntekt: </p>
+              </div>
+              <p className="text-end text-xl">
+                {potentialSaving.toFixed(0)} Kr
+              </p>
+            </li>
+            <li className="flex flex-row justify-between font-light relative">
+              <InfoModal
+                isOpen={openModal === "modal3"}
+                onClose={handleCloseModal}
+                content="Denne beregningen viser hva solcelleanlegget vil koste deg per år over 30 år. Laveste sum gjelder direktekjøp, mens høyeste anslår kostnaden med miljølån. Be om et tilbud for konkrete tall på både direktekjøp og månedlige kostnader med finansiering."
+              />
+              <div className="flex flex-row gap-2">
+                <Image
+                  onClick={() => handleOpenModal("modal3")}
+                  src="/info.svg"
+                  width={20}
+                  height={20}
+                  alt="info"
+                />
+                <p>Din forventet kostnad per år: </p>
+              </div>
+              <p className="text-end text-xl">{yearlyCost.toFixed(0)} Kr</p>
+            </li>
+          </ul>
+
           <button
-            className="bg-black text-white rounded-full text-sm py-1 px-2"
-            onClick={routeBack}
+            className="bg-red-500 self-center w-48 py-1 rounded-md text-sm funky"
+            onClick={toggleModal}
+            disabled={isLoading || totalPanels < minPanels}
           >
-            Nytt søk
+            Jeg ønsker uforpliktende tilbud
           </button>
         </div>
-        <div className="flex flex-col gap-8 md:flex-col xl:flex-row">
-          <SelectOption
-            title="Taktype:"
-            options={[
-              "Takstein (Dobbelkrummet)",
-              "Takstein (Enkeltkrummet)",
-              "Glassert takstein",
-              "Flat takstein",
-              "Shingel/Takpapp",
-              "Trapes",
-              "Flatt tak",
-              "Integrert i taket",
-              "Decra",
-              "Bølgeblikk",
-            ]}
-            onSelect={handleRoofTypeChange}
-          />
-          <SelectOption
-            title="Paneltype:"
-            options={["Premium - 410 W", "Pro - 440 W", "Max Power - 455 W"]}
-            onSelect={handlePanelTypeChange}
-          />
-        </div>
-        <p className="text-sm">
-          Takflater på eiendommen - Sortert fra mest til minst solinnstråling
-        </p>
-
-        {combinedData.length > 0 && (
-          <ul>
-            {combinedData
-
-              .sort((a, b) => {
-                const outputA = a.pv?.outputs.totals.fixed.E_y || 0;
-                const outputB = b.pv?.outputs.totals.fixed.E_y || 0;
-                return outputB - outputA;
-              })
-              .map((roof, index) => {
-                const adjustedCount =
-                  adjustedPanelCounts[roof.id] ?? roof.panels.panelCount;
-
-                if (roof.panels.panelCount >= minPanels) {
-                  const visibleIndex =
-                    combinedData
-                      .filter((r) => r.panels.panelCount >= 1)
-                      .findIndex((r) => r.id === roof.id) + 1;
-
-                  return (
-                    <li key={index} className="cursor-pointer">
-                      <div className="flex flex-row w-full gap-8 py-4">
-                        {/* Check */}
-                        <input
-                          type="checkbox"
-                          className="scale-150"
-                          checked={isChecked[roof.id]}
-                          onChange={(e) =>
-                            toggleRoof(roof.id, e.target.checked)
-                          }
-                        ></input>
-
-                        {/* Tak */}
-                        <p className="shrink-0 self-center text-xl">
-                          Tak {visibleIndex}
-                        </p>
-
-                        {/* Slider */}
-                        <input
-                          type="range"
-                          min="6"
-                          max={roof.panels.panelCount}
-                          className="w-full sliderStyling self-center"
-                          value={adjustedCount}
-                          disabled={!isChecked[roof.id]}
-                          onChange={(e) => {
-                            const newValue = Number(e.target.value);
-                            setAdjustedPanelCounts((prev) => ({
-                              ...prev,
-                              [roof.id]: newValue,
-                            }));
-                          }}
-                        />
-
-                        {/* Panelcount */}
-                        <p className="border-2 border-orange-500 p-1 rounded-md border text-black shrink-0 min-w-24 text-center">
-                          {adjustedCount} paneler
-                        </p>
-
-                        {/* Direction */}
-                        <p className="border border-black border-2 rounded-full w-8 h-8 shrink-0 text-center self-center flex items-center justify-center">
-                          {evaluateDirection(roof.direction)}
-                        </p>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="w-full bg-black h-px"></div>
-                    </li>
-                  );
-                }
-                return null;
-              })}
-          </ul>
+        {/* End of info */}
+        {showModal && (
+          <>
+            <div className="overlay"></div>
+            <SendModal
+              checkedRoofData={checkedRoofData}
+              selectedElPrice={selectedElPrice}
+              selectedRoofType={selectedRoofType}
+              selectedPanelType={selectedPanelType}
+              totalPanels={totalPanels}
+              yearlyCost={yearlyCost}
+              yearlyProd={yearlyProd}
+              address={address}
+              toggleModal={toggleModal}
+            />
+          </>
         )}
-
-        <div className="flex flex-row gap-4 justify-between">
-          <p className="self-center text-xl">
-            Sum paneler{" "}
-            <span className="font-medium">({selectedPanelType})</span>:
-          </p>
-          <p className="border-2 border-orange-500 p-2 rounded-md text-black">
-            {totalPanels} paneler
-          </p>
-        </div>
-        <p className="text-sm">
-          Panelene leveres med 30 års produkt- og effektgaranti. Prisen
-          inkluderer alt fra A-Å, uten skjulte kostnader – komplett
-          solcelleanlegg.
-        </p>
-
-        <ul className="flex flex-col gap-4">
-          <li className="flex flex-row justify-between font-light relative">
-            <InfoModal
-              isOpen={openModal === "modal1"}
-              onClose={handleCloseModal}
-              content="Estimert produksjon i kWh er basert på data fra PVGIS, som bruker værdata fra perioden 2005–2020. Ønsker du et mer nøyaktig estimat på din produksjon? Be om et helt uforpliktende tilbud fra oss. Med et varmere klima og mer sol i Norge de siste årene, kan du også forvente enda høyere produksjon enn det historiske data viser."
-            />
-            <div className="flex flex-row gap-2">
-              <Image
-                onClick={() => handleOpenModal("modal1")}
-                src="/info.svg"
-                width={20}
-                height={20}
-                alt="info"
-              />
-              <p>Din forventet årlig strømproduksjon (kWh): </p>
-            </div>
-            <p className="text-end text-xl">{yearlyProd.toFixed(0)} kWh</p>
-          </li>
-          <li className="flex flex-row justify-between font-light relative">
-            <InfoModal
-              isOpen={openModal === "modal2"}
-              onClose={handleCloseModal}
-              content="Denne beregningen viser en estimert inntekt solcelleanlegget kan gi deg ved å redusere strømregningen. Bruk skyveknappen i boksen «Din estimerte gjennomsnittlige strømpris» for å justere og se hva du kan spare. Beregningen er basert på produksjon i kWh multiplisert med en estimert strømpris. Ønsker du et mer presist anslag? Be om et tilbud, så gir vi deg en tilpasset beregning av kWh-produksjonen for ditt hjem."
-            />
-            <div className="flex flex-row gap-2">
-              <Image
-                onClick={() => handleOpenModal("modal2")}
-                src="/info.svg"
-                width={20}
-                height={20}
-                alt="info"
-              />
-              <p>Din forventet årlig besparelse/inntekt: </p>
-            </div>
-            <p className="text-end text-xl">{potentialSaving.toFixed(0)} Kr</p>
-          </li>
-          <li className="flex flex-row justify-between font-light relative">
-            <InfoModal
-              isOpen={openModal === "modal3"}
-              onClose={handleCloseModal}
-              content="Denne beregningen viser hva solcelleanlegget vil koste deg per år over 30 år. Laveste sum gjelder direktekjøp, mens høyeste anslår kostnaden med miljølån. Be om et tilbud for konkrete tall på både direktekjøp og månedlige kostnader med finansiering."
-            />
-            <div className="flex flex-row gap-2">
-              <Image
-                onClick={() => handleOpenModal("modal3")}
-                src="/info.svg"
-                width={20}
-                height={20}
-                alt="info"
-              />
-              <p>Din forventet kostnad per år: </p>
-            </div>
-            <p className="text-end text-xl">{yearlyCost.toFixed(0)} Kr</p>
-          </li>
-        </ul>
-
-        <button
-          className="bg-red-500 self-center w-48 py-1 rounded-md text-sm funky"
-          onClick={toggleModal}
-          disabled={isLoading || totalPanels < minPanels}
-        >
-          Jeg ønsker uforpliktende tilbud
-        </button>
-      </div>
-      {/* End of info */}
-      {showModal && (
-        <>
-          <div className="overlay"></div> {/* Overlay */}
-          <SendModal
-            checkedRoofData={checkedRoofData}
-            selectedElPrice={selectedElPrice}
-            selectedRoofType={selectedRoofType}
-            selectedPanelType={selectedPanelType}
-            totalPanels={totalPanels}
-            yearlyCost={yearlyCost}
-            yearlyProd={yearlyProd}
-            address={address}
-            toggleModal={toggleModal}
-          />
-        </>
-      )}
+        {/* Map */}
+      </Suspense>
     </div>
   );
 }
