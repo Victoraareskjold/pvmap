@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Searchbar() {
-  const [query, setQuery] = useState("Strømbråtenveien 37");
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const router = useRouter();
 
@@ -16,14 +16,13 @@ export default function Searchbar() {
         const data = await response.json();
         const suggestions = data.Options.map((option) => ({
           text: option.Text,
-          id: option.Id,
+          id: option.PayLoad.AdresseMatrikkelNummer,
           latlng: {
             lat: option.PayLoad.Posisjon.Y,
             lng: option.PayLoad.Posisjon.X,
           },
         }));
         setResults(suggestions);
-        console.log(data);
       } catch (error) {
         console.log("Søkeforespørsel feilet: ", error);
       }
@@ -40,17 +39,25 @@ export default function Searchbar() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-row gap-2">
-        <input
-          type="text"
-          placeholder="Søk på din adresse her"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyUp={handleSearch}
-          className="border p-2"
-        />
+      <div
+        className="flex flex-row justify-between border p-2 bg-white gap-2 rounded-xl"
+        style={{ maxWidth: "450px" }}
+      >
+        <div className="flex flex-row gap-2 w-full">
+          <img src="/pin.png" className="h-8" />
+          <input
+            type="text"
+            placeholder="Søk på din adresse her"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyUp={handleSearch}
+            className="w-full"
+          />
+        </div>
+
+        <img src="/search.png" className="h-8" />
       </div>
-      <div className="relative">
+      <div style={{ maxWidth: "450px" }} className="relative">
         {results.length > 0 && (
           <ul className="absolute left-0 right-0 bg-white border mt-1 max-h-60 overflow-y-auto">
             {results.map((result, index) => (
@@ -64,7 +71,15 @@ export default function Searchbar() {
             ))}
           </ul>
         )}
-        {results.length === 0 && query.length >= 3 && <p>Ingen resultater</p>}
+        {results.length === 0 && query.length >= 3 && (
+          <p
+            style={{ backgroundColor: "#FFDED2", color: "#A44813" }}
+            className="text-xs p-1 rounded-md"
+          >
+            Ups! Vi klarte ikke å finne adressen din. Vennligst dobbeltsjekk og
+            prøv igjen.
+          </p>
+        )}
       </div>
     </div>
   );

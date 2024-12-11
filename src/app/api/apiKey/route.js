@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 
 export async function GET(req) {
   try {
-    const apiKey = process.env.NEXT_PUBLIC_NORKART_API_KEY;
+    const apiKey = process.env.NORKART_API_KEY;
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "Manglende API-nøkkel" }), {

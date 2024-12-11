@@ -1,7 +1,7 @@
 "use client";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import L from "leaflet";
+import L, { popup } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-webatlastile";
 import SelectOption from "@/components/SelectOption";
@@ -11,6 +11,9 @@ import {
 } from "leaflet-webatlastile";
 import PriceEstimator from "@/components/PriceEstimator";
 import Image from "next/image";
+import SendModal from "@/components/SendModal";
+import InfoModal from "@/components/InfoModal";
+import { useRouter } from "next/navigation";
 
 export default function Map() {
   const searchParams = useSearchParams();
@@ -18,15 +21,26 @@ export default function Map() {
   const lng = searchParams.get("lng");
   const address = searchParams.get("address");
   const addressId = searchParams.get("addressId");
+  const router = useRouter();
 
   const [selectedRoofType, setSelectedRoofType] = useState(
     "Takstein (Dobbelkrummet)"
   );
   const [selectedPanelType, setSelectedPanelType] = useState("Premium - 410 W");
-  const [selectedElPrice, setSelectedElPrice] = useState(1);
+  const [selectedElPrice, setSelectedElPrice] = useState(1.5);
 
   const [combinedData, setCombinedData] = useState([]);
+  const [sheetData, setSheetData] = useState(null);
+  const [modalData, setModalData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
   const [adjustedPanelCounts, setAdjustedPanelCounts] = useState({});
+
+  const totalPanels = Object.values(adjustedPanelCounts).reduce(
+    (total, count) => total + count,
+    0
+  );
+
   const [isChecked, setIsChecked] = useState({});
 
   const [yearlyProd, setYearlyProd] = useState(0);
@@ -35,7 +49,10 @@ export default function Map() {
 
   const [apiKey, setApiKey] = useState(null);
 
-  const minPanels = 0;
+  const [showModal, setShowModal] = useState(false);
+  const [openModal, setOpenModal] = useState(null);
+
+  const minPanels = 6;
 
   const handleRoofTypeChange = (value) => {
     setSelectedRoofType(value);
@@ -47,6 +64,18 @@ export default function Map() {
 
   const handleSelectedElPrice = (value) => {
     setSelectedElPrice(value);
+  };
+
+  const toggleModal = () => {
+    setShowModal(!showModal);
+  };
+
+  const handleOpenModal = (modalName) => {
+    setOpenModal(modalName);
+  };
+
+  const handleCloseModal = () => {
+    setOpenModal(null);
   };
 
   useEffect(() => {
@@ -111,8 +140,8 @@ export default function Map() {
 
           const apiUrl = `/api/pvgis?lat=${lat}&lng=${lng}&panelCount=${
             data.panels.panelCount
-          }&aspect=${data.direction - 180}&angle=${
-            data.angle
+          }&aspect=${data.direction - 179}&angle=${
+            data.angle + 1
           }&panelWattage=${getNumbers(selectedPanelType)}`;
           try {
             const response = await fetch(apiUrl);
@@ -133,32 +162,30 @@ export default function Map() {
         const fullData = await Promise.all(pvPromises);
         setCombinedData(fullData);
 
-        // 5. Sett initiale verdier for adjustedPanelCounts
+        const topTwoRoofs = fullData
+          .sort((a, b) => {
+            const outputA = a.pv?.outputs.totals.fixed.E_y || 0;
+            const outputB = b.pv?.outputs.totals.fixed.E_y || 0;
+            return outputB - outputA;
+          })
+          .slice(0, 2);
+
         const initialPanelCounts = fullData.reduce((acc, roof) => {
-          acc[roof.id] = 0; // Start med 0 paneler for alle
+          if (topTwoRoofs.some((topRoof) => topRoof.id === roof.id)) {
+            acc[roof.id] = Math.ceil(roof.panels.panelCount / 2);
+          } else {
+            acc[roof.id] = 0;
+          }
           return acc;
         }, {});
 
-        // Finn takflaten med høyest produksjon
-        const roofWithMaxProduction = fullData.reduce(
-          (maxRoof, currentRoof) => {
-            const maxOutput = maxRoof.pv?.outputs.totals.fixed.E_y || 0;
-            const currentOutput = currentRoof.pv?.outputs.totals.fixed.E_y || 0;
-            return currentOutput > maxOutput ? currentRoof : maxRoof;
-          },
-          fullData[0]
-        );
-
-        // Sett initial panelCount for den takflaten med høyest produksjon
-        initialPanelCounts[roofWithMaxProduction.id] =
-          roofWithMaxProduction.panels.panelCount;
         setAdjustedPanelCounts(initialPanelCounts);
 
-        // 6. Sett kun takflaten med høyest produksjon til checked
         const initialChecked = fullData.reduce((acc, roof) => {
-          acc[roof.id] = roof.id === roofWithMaxProduction.id;
+          acc[roof.id] = topTwoRoofs.some((topRoof) => topRoof.id === roof.id);
           return acc;
         }, {});
+
         setIsChecked(initialChecked);
       } catch (error) {
         console.error("Feil under datahåndtering:", error.message);
@@ -182,7 +209,39 @@ export default function Map() {
   }, [adjustedPanelCounts, isChecked, combinedData, selectedElPrice]);
 
   useEffect(() => {
+    const fetchData = async () => {
+      if (totalPanels < 0) {
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/googleSheets", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            totalPanels,
+          }),
+        });
+        const data = await response.json();
+        setSheetData(data.data);
+
+        if (data.valueFromB2) {
+          setYearlyCost(parseFloat(data.valueFromB2));
+        }
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Feil ved henting av sheet data:", error);
+      }
+    };
+
+    fetchData();
+  }, [totalPanels]);
+
+  useEffect(() => {
     let map;
+    let currentLayer;
 
     if (lat && lng && apiKey) {
       if (L.DomUtil.get("map")?._leaflet_id) {
@@ -190,16 +249,60 @@ export default function Map() {
       }
       map = L.map("map").setView([lat, lng], 25);
 
-      webatlasTileLayer({
+      // Opprett AERIAL og HYBRID kartlag
+      const aerialLayer = webatlasTileLayer({
         apiKey: apiKey,
         mapType: WebatlasTileLayerTypes.AERIAL,
-      }).addTo(map);
+      });
+
+      const greyLayer = webatlasTileLayer({
+        apiKey: apiKey,
+        mapType: WebatlasTileLayerTypes.GREY,
+      });
+
+      currentLayer = aerialLayer;
+      currentLayer.addTo(map);
+
+      // Lag en tilpasset kontroll
+      const LayerToggleControl = L.Control.extend({
+        onAdd: function () {
+          const button = L.DomUtil.create("img", "layer-toggle-button");
+          button.src = "/layers.png";
+          button.alt = "Endre karttype";
+          button.style.cursor = "pointer";
+          button.style.backgroundColor = "white";
+          button.style.border = "1px solid black";
+          button.style.borderRadius = "4px";
+          button.style.width = "32px";
+          button.style.height = "32px";
+
+          button.onclick = () => {
+            // Fjern nåværende lag
+            map.removeLayer(currentLayer);
+
+            // Bytt lag
+            if (currentLayer === aerialLayer) {
+              currentLayer = greyLayer;
+            } else {
+              currentLayer = aerialLayer;
+            }
+
+            // Legg til det nye laget
+            currentLayer.addTo(map);
+          };
+
+          return button;
+        },
+      });
+
+      // Legg til kontrollen i kartet
+      map.addControl(new LayerToggleControl({ position: "topright" }));
 
       if (combinedData.length > 0) {
         combinedData.forEach((roof) => {
-          if (roof.panels.panelCount <= minPanels) {
+          /* if (roof.panels.panelCount <= minPanels) {
             return;
-          }
+          } */
           try {
             const coordinates = JSON.parse(roof.coordinates);
 
@@ -214,23 +317,23 @@ export default function Map() {
 
               function getColorCategory(azimuth, tilt) {
                 if (Math.abs(azimuth) <= 10 && tilt >= 20 && tilt <= 60) {
-                  return "red"; // Svært god
+                  return "#FF1F1F"; // Svært god
                 } else if (
                   Math.abs(azimuth) <= 30 &&
                   tilt >= 20 &&
                   tilt <= 60
                 ) {
-                  return "orange"; // God
+                  return "#FC6A20"; // God
                 } else if (Math.abs(azimuth) <= 90 && tilt >= 0 && tilt <= 60) {
-                  return "yellow"; // Middels
+                  return "#FFF53C"; // Middels
                 } else if (
                   Math.abs(azimuth) <= 120 &&
                   tilt >= 10 &&
                   tilt <= 80
                 ) {
-                  return "green"; // Under middels
+                  return "#BAE242"; // Under middels
                 } else {
-                  return "blue"; // Dårlig
+                  return "#5178DB"; // Dårlig
                 }
               }
 
@@ -260,6 +363,14 @@ export default function Map() {
               }).addTo(map);
 
               polygon.on("click", () => {
+                if (roof.panels.panelCount < minPanels) {
+                  const infoPopup = L.popup()
+                    .setLatLng(polygon.getBounds().getCenter())
+                    .setContent("<p>Denne takflaten er for liten.</p>")
+                    .openOn(map);
+                  return;
+                }
+
                 toggleRoof(roof.id, !isChecked[roof.id]);
               });
             } else {
@@ -299,6 +410,7 @@ export default function Map() {
       ...prev,
       [roofId]: isCheckedNow,
     }));
+    console.log(roofId);
 
     setAdjustedPanelCounts((prev) => ({
       ...prev,
@@ -335,22 +447,68 @@ export default function Map() {
     }
   };
 
-  const handleSendData = () => {
-    console.log("pressed");
+  const checkedRoofData = combinedData
+    .filter((roof) => isChecked[roof.id]) // Filtrer takflater som er merket (checked)
+    .reduce((acc, roof) => {
+      acc[roof.id] = {
+        roofId: roof.id,
+        adjustedPanelCount:
+          adjustedPanelCounts[roof.id] || roof.panels.panelCount,
+        maxPanels: roof.panels.panelCount,
+      };
+      return acc;
+    }, {});
+
+  useEffect(() => {
+    setModalData({
+      checkedRoofData,
+      totalPanels,
+      selectedElPrice,
+      selectedRoofType,
+      selectedPanelType,
+      yearlyProd,
+      yearlyCost,
+      address,
+    });
+  }, [
+    totalPanels,
+    selectedElPrice,
+    selectedRoofType,
+    selectedPanelType,
+    yearlyProd,
+    yearlyCost,
+  ]);
+
+  const routeBack = () => {
+    router.push("/");
   };
 
   return (
-    <div className="flex flex-col m-w-5xl w-full md:flex-row gap-2">
+    <div className="flex flex-col w-full md:flex-row gap-2">
       {/* Map */}
-      <div className="w-full">
-        <div id="map" className="map hidden md:block"></div>
+      <div className="w-full relative">
+        <img
+          src="/colorGrading.png"
+          className="absolute z-20 w-20 right-3 top-12 rounded-md hidden md:block"
+        />
+        <div
+          id="map"
+          className="map z-10 w-lvw aspect-square md:w-full md:aspect-auto"
+        ></div>
         <PriceEstimator onSelect={handleSelectedElPrice} />
       </div>
-
       {/* Info */}
-      <div className="flex flex-col gap-8 p-4 w-full">
-        <h1 className="text-xl">Adresse: {address}</h1>
-        <div className="flex flex-row gap-8 md:flex-col xl:flex-row">
+      <div className="flex flex-col gap-8 p-4 w-full md:max-w-2xl">
+        <div className="flex flex-row justify-between">
+          <h1 className="text-xl">Adresse: {address}</h1>
+          <button
+            className="bg-black text-white rounded-full text-sm py-1 px-2"
+            onClick={routeBack}
+          >
+            Nytt søk
+          </button>
+        </div>
+        <div className="flex flex-col gap-8 md:flex-col xl:flex-row">
           <SelectOption
             title="Taktype:"
             options={[
@@ -432,7 +590,7 @@ export default function Map() {
                         />
 
                         {/* Panelcount */}
-                        <p className="bg-orange-500 p-1 rounded-md border border-white text-white shrink-0 min-w-24 text-center">
+                        <p className="border-2 border-orange-500 p-1 rounded-md border text-black shrink-0 min-w-24 text-center">
                           {adjustedCount} paneler
                         </p>
 
@@ -457,12 +615,8 @@ export default function Map() {
             Sum paneler{" "}
             <span className="font-medium">({selectedPanelType})</span>:
           </p>
-          <p className="bg-orange-500 p-2 rounded-md border border-white text-white">
-            {Object.values(adjustedPanelCounts).reduce(
-              (total, count) => total + count,
-              0
-            )}{" "}
-            paneler
+          <p className="border-2 border-orange-500 p-2 rounded-md text-black">
+            {totalPanels} paneler
           </p>
         </div>
         <p className="text-sm">
@@ -472,23 +626,56 @@ export default function Map() {
         </p>
 
         <ul className="flex flex-col gap-4">
-          <li className="flex flex-row justify-between font-light">
+          <li className="flex flex-row justify-between font-light relative">
+            <InfoModal
+              isOpen={openModal === "modal1"}
+              onClose={handleCloseModal}
+              content="Estimert produksjon i kWh er basert på data fra PVGIS, som bruker værdata fra perioden 2005–2020. Ønsker du et mer nøyaktig estimat på din produksjon? Be om et helt uforpliktende tilbud fra oss. Med et varmere klima og mer sol i Norge de siste årene, kan du også forvente enda høyere produksjon enn det historiske data viser."
+            />
             <div className="flex flex-row gap-2">
-              <Image src="/info.svg" width={20} height={20} alt="info" />
+              <Image
+                onClick={() => handleOpenModal("modal1")}
+                src="/info.svg"
+                width={20}
+                height={20}
+                alt="info"
+              />
               <p>Din forventet årlig strømproduksjon (kWh): </p>
             </div>
             <p className="text-end text-xl">{yearlyProd.toFixed(0)} kWh</p>
           </li>
-          <li className="flex flex-row justify-between font-light">
+          <li className="flex flex-row justify-between font-light relative">
+            <InfoModal
+              isOpen={openModal === "modal2"}
+              onClose={handleCloseModal}
+              content="Denne beregningen viser en estimert inntekt solcelleanlegget kan gi deg ved å redusere strømregningen. Bruk skyveknappen i boksen «Din estimerte gjennomsnittlige strømpris» for å justere og se hva du kan spare. Beregningen er basert på produksjon i kWh multiplisert med en estimert strømpris. Ønsker du et mer presist anslag? Be om et tilbud, så gir vi deg en tilpasset beregning av kWh-produksjonen for ditt hjem."
+            />
             <div className="flex flex-row gap-2">
-              <Image src="/info.svg" width={20} height={20} alt="info" />
+              <Image
+                onClick={() => handleOpenModal("modal2")}
+                src="/info.svg"
+                width={20}
+                height={20}
+                alt="info"
+              />
               <p>Din forventet årlig besparelse/inntekt: </p>
             </div>
             <p className="text-end text-xl">{potentialSaving.toFixed(0)} Kr</p>
           </li>
-          <li className="flex flex-row justify-between font-light">
+          <li className="flex flex-row justify-between font-light relative">
+            <InfoModal
+              isOpen={openModal === "modal3"}
+              onClose={handleCloseModal}
+              content="Denne beregningen viser hva solcelleanlegget vil koste deg per år over 30 år. Laveste sum gjelder direktekjøp, mens høyeste anslår kostnaden med miljølån. Be om et tilbud for konkrete tall på både direktekjøp og månedlige kostnader med finansiering."
+            />
             <div className="flex flex-row gap-2">
-              <Image src="/info.svg" width={20} height={20} alt="info" />
+              <Image
+                onClick={() => handleOpenModal("modal3")}
+                src="/info.svg"
+                width={20}
+                height={20}
+                alt="info"
+              />
               <p>Din forventet kostnad per år: </p>
             </div>
             <p className="text-end text-xl">{yearlyCost.toFixed(0)} Kr</p>
@@ -496,13 +683,30 @@ export default function Map() {
         </ul>
 
         <button
-          onClick={handleSendData}
-          className="bg-red-500 self-center w-48 py-1 rounded-md text-sm"
+          className="bg-red-500 self-center w-48 py-1 rounded-md text-sm funky"
+          onClick={toggleModal}
+          disabled={isLoading || totalPanels < minPanels}
         >
-          Jeg ønsker tilbud
+          Jeg ønsker uforpliktende tilbud
         </button>
       </div>
       {/* End of info */}
+      {showModal && (
+        <>
+          <div className="overlay"></div> {/* Overlay */}
+          <SendModal
+            checkedRoofData={checkedRoofData}
+            selectedElPrice={selectedElPrice}
+            selectedRoofType={selectedRoofType}
+            selectedPanelType={selectedPanelType}
+            totalPanels={totalPanels}
+            yearlyCost={yearlyCost}
+            yearlyProd={yearlyProd}
+            address={address}
+            toggleModal={toggleModal}
+          />
+        </>
+      )}
     </div>
   );
 }

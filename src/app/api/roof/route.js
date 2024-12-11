@@ -12,11 +12,11 @@ export async function GET(req) {
 
   try {
     const response = await fetch(
-      `https://takflater.api.norkart.no/takflater/adresse/${addressId}`,
+      `https://takflater.api.norkart.no/takflater/matrikkel/${addressId}`,
       {
         headers: {
           Accept: "application/json",
-          "X-WAAPI-TOKEN": process.env.NEXT_PUBLIC_NORKART_API_KEY_BACKEND,
+          "X-WAAPI-TOKEN": process.env.NORKART_API_KEY_BACKEND,
         },
       }
     );

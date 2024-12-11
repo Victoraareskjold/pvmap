@@ -19,10 +19,10 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="flex justify-center">
+    <html lang="en" className="flex w-full">
       <body
-        style={{ background: "#D9D9D9" }}
-        className={`${geistSans.variable} ${geistMono.variable} antialiased max-w-screen-2xl	`}
+        style={{ background: "#FFFBF8" }}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
       </body>

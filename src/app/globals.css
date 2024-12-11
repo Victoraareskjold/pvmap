@@ -3,14 +3,27 @@
 @tailwind utilities;
 
 html {
+  width: 100%;
 }
 
 body {
+  width: 100%;
+}
+
+.background {
+  background-image: url("/background.png");
+  height: 100vh;
+  width: 100vw;
+  background-repeat: no-repeat;
+  background-size: cover;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .map {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: 70vh;
 }
 
 input[type="range"] {
@@ -28,4 +41,37 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   background: #ffad2a;
   cursor: pointer;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent svart */
+  z-index: 25; /* Skal være bak modalen, men foran kartet */
+}
+
+.modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* display: none; */
+}
+
+.funky {
+  background: linear-gradient(90deg, #ff9d00 23%, #ffd05a 92%);
+  border: 1px solid #884b00;
+  padding: 12px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  text-wrap: nowrap;
+  width: fit-content;
+}
+
+.funky:disabled {
+  opacity: 0.5;
 }

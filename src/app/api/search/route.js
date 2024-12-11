@@ -16,7 +16,8 @@ export async function GET(req) {
       {
         headers: {
           Accept: "application/json",
-          "X-WAAPI-TOKEN": process.env.NEXT_PUBLIC_NORKART_API_KEY,
+          "X-WAAPI-TOKEN": process.env.NORKART_API_KEY,
+          SRS: 4326,
         },
       }
     );
