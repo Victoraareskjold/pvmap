@@ -78,7 +78,7 @@ export default function SendModal({
   };
 
   return (
-    <div className="flex flex-col gap-6 bg-white rounded-xl modal z-50 p-4 w-full max-w-md">
+    <div className="flex flex-col gap-6 bg-white rounded-xl modal z-50 p-4 w-full max-w-md fixed">
       <button
         className="self-end text-orange-500 font-bold text-sm"
         onClick={toggleModal}

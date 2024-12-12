@@ -3,7 +3,7 @@ import Searchbar from "@/components/Searchbar";
 export default function Home() {
   return (
     <div className="background">
-      <div className="px-12 w-full self-center flex flex-col gap-8">
+      <div className="px-4 xl:px-12 w-full self-center flex flex-col gap-8">
         <h1 className="text-white text-6xl">
           Er solceller en god <br /> investering for deg?
         </h1>

@@ -352,7 +352,9 @@ export default function Map() {
             apiKey={apiKey}
           />
 
-          <PriceEstimator onSelect={handleSelectedElPrice} />
+          <div className="hidden md:block">
+            <PriceEstimator onSelect={handleSelectedElPrice} />
+          </div>
         </div>
         {/* Info */}
         <div className="flex flex-col gap-8 p-4 w-full md:max-w-2xl">
@@ -365,9 +367,9 @@ export default function Map() {
               Nytt søk
             </button>
           </div>
-          <div className="flex flex-col gap-8 md:flex-col xl:flex-row">
+          <div className="flex flex-col gap-8 xl:flex-row">
             <SelectOption
-              title="Taktype:"
+              title="Din taktype:"
               options={[
                 "Takstein (Dobbelkrummet)",
                 "Takstein (Enkeltkrummet)",
@@ -413,48 +415,54 @@ export default function Map() {
 
                     return (
                       <li key={index} className="cursor-pointer">
-                        <div className="flex flex-row w-full gap-8 py-4">
-                          {/* Check */}
-                          <input
-                            type="checkbox"
-                            className="scale-150"
-                            checked={isChecked[roof.id]}
-                            onChange={(e) =>
-                              toggleRoof(roof.id, e.target.checked)
-                            }
-                          ></input>
+                        <div className="flex flex-col w-full gap-4 py-4">
+                          <div className="flex flex-row gap-4">
+                            {/* Check */}
+                            <input
+                              type="checkbox"
+                              className="scale-150"
+                              checked={isChecked[roof.id]}
+                              onChange={(e) =>
+                                toggleRoof(roof.id, e.target.checked)
+                              }
+                            ></input>
 
-                          {/* Tak */}
-                          <p className="shrink-0 self-center text-xl">
-                            Tak {visibleIndex}
-                          </p>
+                            {/* Tak */}
+                            <p className="shrink-0 self-center text-md font-medium">
+                              Tak {visibleIndex}:{" "}
+                              <span className="italic font-normal">
+                                Velg antall paneler på skyveknappen under
+                              </span>
+                            </p>
+                          </div>
+                          <div className="flex flex-row gap-4 ml-7">
+                            {/* Slider */}
+                            <input
+                              type="range"
+                              min="6"
+                              max={roof.panels.panelCount}
+                              className="w-full sliderStyling self-center"
+                              value={adjustedCount}
+                              disabled={!isChecked[roof.id]}
+                              onChange={(e) => {
+                                const newValue = Number(e.target.value);
+                                setAdjustedPanelCounts((prev) => ({
+                                  ...prev,
+                                  [roof.id]: newValue,
+                                }));
+                              }}
+                            />
 
-                          {/* Slider */}
-                          <input
-                            type="range"
-                            min="6"
-                            max={roof.panels.panelCount}
-                            className="w-full sliderStyling self-center"
-                            value={adjustedCount}
-                            disabled={!isChecked[roof.id]}
-                            onChange={(e) => {
-                              const newValue = Number(e.target.value);
-                              setAdjustedPanelCounts((prev) => ({
-                                ...prev,
-                                [roof.id]: newValue,
-                              }));
-                            }}
-                          />
+                            {/* Panelcount */}
+                            <p className="border-2 border-orange-500 p-1 rounded-md border text-black shrink-0 min-w-24 text-center">
+                              {adjustedCount} paneler
+                            </p>
 
-                          {/* Panelcount */}
-                          <p className="border-2 border-orange-500 p-1 rounded-md border text-black shrink-0 min-w-24 text-center">
-                            {adjustedCount} paneler
-                          </p>
-
-                          {/* Direction */}
-                          <p className="border border-black border-2 rounded-full w-8 h-8 shrink-0 text-center self-center flex items-center justify-center">
-                            {evaluateDirection(roof.direction)}
-                          </p>
+                            {/* Direction */}
+                            <p className="border border-black border-2 rounded-full w-8 h-8 shrink-0 text-center self-center flex items-center justify-center">
+                              {evaluateDirection(roof.direction)}
+                            </p>
+                          </div>
                         </div>
 
                         {/* Divider */}
@@ -482,8 +490,12 @@ export default function Map() {
             solcelleanlegg.
           </p>
 
+          <div className="block md:hidden">
+            <PriceEstimator onSelect={handleSelectedElPrice} />
+          </div>
+
           <ul className="flex flex-col gap-4">
-            <li className="flex flex-row justify-between font-light relative">
+            <li className="flex flex-col justify-between font-light relative gap-2">
               <InfoModal
                 isOpen={openModal === "modal1"}
                 onClose={handleCloseModal}
@@ -499,9 +511,17 @@ export default function Map() {
                 />
                 <p>Din forventet årlig strømproduksjon (kWh): </p>
               </div>
-              <p className="text-end text-xl">{yearlyProd.toFixed(0)} kWh</p>
+              <p className="text-xl ml-7 font-medium">
+                = {""}
+                {new Intl.NumberFormat("nb-NO").format(
+                  yearlyProd.toFixed(0)
+                )}{" "}
+                kWh
+              </p>
+              {/* Divider */}
+              <div className="w-full bg-black h-px"></div>
             </li>
-            <li className="flex flex-row justify-between font-light relative">
+            <li className="flex flex-col justify-between font-light relative gap-2">
               <InfoModal
                 isOpen={openModal === "modal2"}
                 onClose={handleCloseModal}
@@ -517,11 +537,17 @@ export default function Map() {
                 />
                 <p>Din forventet årlig besparelse/inntekt: </p>
               </div>
-              <p className="text-end text-xl">
-                {potentialSaving.toFixed(0)} Kr
+              <p className="text-xl ml-7 font-medium">
+                = {""}
+                {new Intl.NumberFormat("nb-NO").format(
+                  potentialSaving.toFixed(0)
+                )}{" "}
+                Kr
               </p>
+              {/* Divider */}
+              <div className="w-full bg-black h-px"></div>
             </li>
-            <li className="flex flex-row justify-between font-light relative">
+            <li className="flex flex-col justify-between font-light relative gap-2">
               <InfoModal
                 isOpen={openModal === "modal3"}
                 onClose={handleCloseModal}
@@ -537,7 +563,15 @@ export default function Map() {
                 />
                 <p>Din forventet kostnad per år: </p>
               </div>
-              <p className="text-end text-xl">{yearlyCost.toFixed(0)} Kr</p>
+              <p className="text-xl ml-7 font-medium">
+                = {""}
+                {new Intl.NumberFormat("nb-NO").format(
+                  yearlyCost.toFixed(0)
+                )}{" "}
+                Kr
+              </p>
+              {/* Divider */}
+              <div className="w-full bg-black h-px"></div>
             </li>
           </ul>
 
