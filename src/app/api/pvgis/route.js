@@ -13,17 +13,15 @@ export async function GET(req) {
 
   let systemLoss = 0;
 
-  if (panelCount <= 10) {
+  if (panelCount <= 40) {
+    systemLoss = 0;
+  } else if (panelCount <= 60) {
     systemLoss = 5;
-  } else if (panelCount <= 30) {
-    systemLoss = 7;
-  } else if (panelCount <= 70) {
-    systemLoss = 10;
+  } else if (panelCount <= 90) {
+    systemLoss = 8;
   } else {
-    systemLoss = 12;
+    systemLoss = 14;
   }
-
-  const loss = 14 + systemLoss;
 
   if (!lat || !lng || !panelCount || !aspect || !angle) {
     return new Response(
@@ -35,7 +33,7 @@ export async function GET(req) {
   }
 
   try {
-    const apiUrl = `https://re.jrc.ec.europa.eu/api/v5_3/PVcalc?lat=${lat}&lon=${lng}&peakpower=${peakpower}&loss=${loss}&aspect=${aspect}&angle=${angle}&outputformat=json`;
+    const apiUrl = `https://re.jrc.ec.europa.eu/api/v5_3/PVcalc?lat=${lat}&lon=${lng}&peakpower=${peakpower}&loss=${systemLoss}&aspect=${aspect}&angle=${angle}&outputformat=json`;
 
     const response = await fetch(apiUrl, {
       headers: { Accept: "application/json" },

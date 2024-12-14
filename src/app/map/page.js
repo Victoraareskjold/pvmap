@@ -43,6 +43,8 @@ export default function Map() {
     0
   );
 
+  const [visibleRoofs, setVisibleRoofs] = useState([]);
+
   const [isChecked, setIsChecked] = useState({});
 
   const [yearlyProd, setYearlyProd] = useState(0);
@@ -117,8 +119,8 @@ export default function Map() {
         const solarData = roofData.map((roof, index) => {
           const panelWidth = 1.1;
           const panelHeight = 1.7;
-          const vPanels = Math.floor(roof.Lengde / panelWidth);
-          const hPanels = Math.floor(roof.Bredde / panelHeight);
+          const vPanels = Math.floor((roof.Lengde * 0.95) / panelWidth);
+          const hPanels = Math.floor((roof.Bredde * 0.95) / panelHeight);
           const panelCount = vPanels * hPanels;
 
           return {
@@ -166,8 +168,10 @@ export default function Map() {
 
         const topTwoRoofs = fullData
           .sort((a, b) => {
-            const outputA = a.pv?.outputs.totals.fixed.E_y || 0;
-            const outputB = b.pv?.outputs.totals.fixed.E_y || 0;
+            const outputA =
+              a.pv?.outputs.totals.fixed.E_y / a.panels.panelCount || 0;
+            const outputB =
+              b.pv?.outputs.totals.fixed.E_y / b.panels.panelCount || 0;
             return outputB - outputA;
           })
           .slice(0, 2);
@@ -262,6 +266,14 @@ export default function Map() {
     }));
     console.log(roofId);
 
+    if (isChecked) {
+      // Legg til takflaten i listen
+      setVisibleRoofs((prev) => [...prev, roofId]);
+    } else {
+      // Fjern takflaten fra listen
+      setVisibleRoofs((prev) => prev.filter((roofId) => roofId !== roofId));
+    }
+
     setAdjustedPanelCounts((prev) => ({
       ...prev,
       [roofId]: isCheckedNow
@@ -333,6 +345,14 @@ export default function Map() {
     router.push("/");
   };
 
+  useEffect(() => {
+    const sortedData = combinedData.filter(
+      (roof) => roof.panels.panelCount >= minPanels
+    );
+
+    setVisibleRoofs(sortedData.slice(0, 2).map((roof) => roof.id));
+  }, [combinedData, minPanels]);
+
   return (
     <div className="flex flex-col w-full md:flex-row gap-2">
       <Suspense fallback={<div>Loading..</div>}>
@@ -397,10 +417,13 @@ export default function Map() {
           {combinedData.length > 0 && (
             <ul>
               {combinedData
+                .filter((roof) => visibleRoofs.includes(roof.id)) // Vis kun synlige takflater
 
                 .sort((a, b) => {
-                  const outputA = a.pv?.outputs.totals.fixed.E_y || 0;
-                  const outputB = b.pv?.outputs.totals.fixed.E_y || 0;
+                  const outputA =
+                    a.pv?.outputs.totals.fixed.E_y / a.panels.panelCount || 0;
+                  const outputB =
+                    b.pv?.outputs.totals.fixed.E_y / b.panels.panelCount || 0;
                   return outputB - outputA;
                 })
                 .map((roof, index) => {
@@ -414,7 +437,11 @@ export default function Map() {
                         .findIndex((r) => r.id === roof.id) + 1;
 
                     return (
-                      <li key={index} className="cursor-pointer">
+                      <li
+                        key={index}
+                        className="cursor-pointer"
+                        onClick={() => toggleRoof(roof.id, !isChecked[roof.id])}
+                      >
                         <div className="flex flex-col w-full gap-4 py-4">
                           <div className="flex flex-row gap-4">
                             {/* Check */}
@@ -514,7 +541,11 @@ export default function Map() {
               <p className="text-xl ml-7 font-medium">
                 = {""}
                 {new Intl.NumberFormat("nb-NO").format(
-                  yearlyProd.toFixed(0)
+                  (yearlyProd * 0.95).toFixed(0)
+                )}{" "}
+                -{" "}
+                {new Intl.NumberFormat("nb-NO").format(
+                  (yearlyProd * 1.05).toFixed(0)
                 )}{" "}
                 kWh
               </p>

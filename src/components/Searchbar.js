@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 export default function Searchbar() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
+  const [showError, setShowError] = useState(false); // Ny tilstand for feilmeldingen
   const router = useRouter();
 
   const handleSearch = async () => {
+    setShowError(false); // Skjul feilmeldingen midlertidig
     if (query !== null && query !== "") {
       try {
         const response = await fetch(`/api/search?query=${query}`);
@@ -23,17 +25,28 @@ export default function Searchbar() {
           },
         }));
         setResults(suggestions);
+
+        // Skjul feilmeldingen hvis vi har resultater
+        if (suggestions.length > 0) {
+          setShowError(false);
+        } else {
+          // Vis feilmeldingen etter 1 sekund
+          setTimeout(() => {
+            setShowError(true);
+          }, 1000);
+        }
       } catch (error) {
         console.log("Søkeforespørsel feilet: ", error);
+        // Vis feilmeldingen etter 1 sekund
+        setTimeout(() => {
+          setShowError(true);
+        }, 1000);
       }
     }
-
-    return [];
   };
 
   const handleAddressSelect = (address) => {
     const url = `/map?lat=${address.latlng.lat}&lng=${address.latlng.lng}&address=${address.text}&addressId=${address.id}`;
-
     router.push(url);
   };
 
@@ -51,7 +64,7 @@ export default function Searchbar() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyUp={handleSearch}
-            className="w-full"
+            className="w-full focus:outline-none"
           />
         </div>
 
@@ -71,7 +84,7 @@ export default function Searchbar() {
             ))}
           </ul>
         )}
-        {results.length === 0 && query.length >= 3 && (
+        {showError && query.length >= 3 && results.length === 0 && (
           <p
             style={{ backgroundColor: "#FFDED2", color: "#A44813" }}
             className="text-xs p-1 rounded-md"

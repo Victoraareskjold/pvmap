@@ -13,7 +13,6 @@ const MapComponent = ({
   combinedData,
   isChecked,
   toggleRoof,
-  adjustedPanelCounts,
   apiKey,
 }) => {
   useEffect(() => {
@@ -93,25 +92,28 @@ const MapComponent = ({
               );
 
               function getColorCategory(azimuth, tilt) {
-                if (Math.abs(azimuth) <= 10 && tilt >= 20 && tilt <= 60) {
-                  return "#FF1F1F"; // Svært god
-                } else if (
-                  Math.abs(azimuth) <= 30 &&
-                  tilt >= 20 &&
-                  tilt <= 60
-                ) {
-                  return "#FC6A20"; // God
-                } else if (Math.abs(azimuth) <= 90 && tilt >= 0 && tilt <= 60) {
-                  return "#FFF53C"; // Middels
-                } else if (
-                  Math.abs(azimuth) <= 120 &&
-                  tilt >= 10 &&
-                  tilt <= 80
-                ) {
-                  return "#BAE242"; // Under middels
-                } else {
-                  return "#5178DB"; // Dårlig
+                if (Math.abs(azimuth) <= 10 && tilt >= 20 && tilt <= 90) {
+                  return "#FF0000"; // Svært god
                 }
+                if (
+                  (azimuth >= 0 && azimuth <= 30 && tilt >= 10 && tilt <= 20) ||
+                  (Math.abs(azimuth) <= 30 && tilt >= 20 && tilt <= 90)
+                ) {
+                  return "#FF8800"; // God
+                }
+                if (Math.abs(azimuth) <= 120 && tilt >= 0 && tilt <= 60) {
+                  return "#FFF600"; // Middels
+                }
+
+                if (Math.abs(azimuth) > 120 && tilt >= 0 && tilt <= 10) {
+                  return "#FFF600"; // Middels
+                }
+
+                if (Math.abs(azimuth) > 120 && tilt >= 10 && tilt <= 15) {
+                  return "#D4FF00"; // Under middels
+                }
+
+                return "#00BBFF"; // Dårlig
               }
 
               /* Min løsning */
@@ -135,7 +137,7 @@ const MapComponent = ({
                 color: "black",
                 fillColor: getColorCategory(roof.direction - 180, roof.angle),
 
-                fillOpacity: 1,
+                fillOpacity: isChecked[roof.id] ? 1 : 0.65,
                 weight: isChecked[roof.id] ? 4 : 1,
               }).addTo(map);
 
@@ -166,7 +168,7 @@ const MapComponent = ({
     return () => {
       if (map) map.remove();
     };
-  }, [lat, lng, combinedData, isChecked, apiKey, adjustedPanelCounts]);
+  }, [lat, lng, combinedData, isChecked, apiKey]);
 
   const getColorCategory = (azimuth, tilt) => {
     if (Math.abs(azimuth) <= 10 && tilt >= 20 && tilt <= 60) {
