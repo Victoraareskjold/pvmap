@@ -18,28 +18,33 @@ export async function POST(req) {
       yearlyCost,
       yearlyProd,
       address,
+      site,
     } = await req.json();
 
     const msg = {
       to: `victor.aareskjold@icloud.com`,
       from: "victor.aaareskjold@gmail.com",
       subject: `${name} har etterspurt et solcelleestimat!`,
-      text: `Navn: ${name}
-             Emai: ${email}
-             Adresse: ${address}
-             Vil bli ringt? ${checked}
-             Telefon: ${phone}
+      text: `
+      Nettside: ${site}
+      
+      Navn: ${name}
+      Emai: ${email}
+      Adresse: ${address}
+      Vil bli ringt? ${checked}
+      Telefon: ${phone}
 
-             Type paneler: ${selectedPanelType}
-             Taktype: ${selectedRoofType}
 
-             Estimert elektrisitetspris: ${selectedElPrice} kr/kWh
-             Antall paneler: ${totalPanels}
+      Type paneler: ${selectedPanelType}
+      Taktype: ${selectedRoofType}
 
-             ${JSON.stringify(checkedRoofData, null, 2)}
+      Estimert elektrisitetspris: ${selectedElPrice} kr/kWh
+      Antall paneler: ${totalPanels}
 
-             Årlig produksjon: ${yearlyProd.toFixed(0)}
-             Årlig kostnad: ${yearlyCost.toFixed(0)}`,
+      ${JSON.stringify(checkedRoofData, null, 2)}
+
+      Årlig produksjon: ${yearlyProd.toFixed(0)}
+      Årlig kostnad: ${yearlyCost.toFixed(0)}`,
     };
 
     await sendGridMail.send(msg);

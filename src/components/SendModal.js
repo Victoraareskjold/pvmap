@@ -12,6 +12,7 @@ export default function SendModal({
   yearlyProd,
   address,
   toggleModal,
+  site,
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -60,6 +61,7 @@ export default function SendModal({
           yearlyCost,
           yearlyProd,
           address,
+          site,
         }),
       });
 

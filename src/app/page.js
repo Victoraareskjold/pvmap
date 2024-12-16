@@ -1,6 +1,10 @@
+"use client";
 import Searchbar from "@/components/Searchbar";
+import { useSearchParams } from "next/navigation";
 
 export default function Home() {
+  const searchParams = useSearchParams();
+  const site = searchParams.get("site");
   return (
     <div className="background">
       <div className="px-4 xl:px-12 w-full self-center flex flex-col gap-8">
@@ -12,7 +16,7 @@ export default function Home() {
           Utforsk i ditt eget tempo, og om du lurer på noe, er vi bare en
           melding unna – helt uforpliktende.
         </p>
-        <Searchbar />
+        <Searchbar site={site} />
       </div>
     </div>
   );

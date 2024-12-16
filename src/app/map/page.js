@@ -23,6 +23,7 @@ export default function Map() {
   const lng = searchParams.get("lng");
   const address = searchParams.get("address");
   const addressId = searchParams.get("addressId");
+  const site = searchParams.get("site");
   const router = useRouter();
 
   const [selectedRoofType, setSelectedRoofType] = useState(
@@ -42,6 +43,8 @@ export default function Map() {
     (total, count) => total + count,
     0
   );
+
+  console.log(site);
 
   const [visibleRoofs, setVisibleRoofs] = useState([]);
 
@@ -629,6 +632,7 @@ export default function Map() {
               yearlyProd={yearlyProd}
               address={address}
               toggleModal={toggleModal}
+              site={site}
             />
           </>
         )}

@@ -1,11 +1,15 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function Searchbar() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [showError, setShowError] = useState(false); // Ny tilstand for feilmeldingen
+  const searchParams = useSearchParams();
+
+  const site = searchParams.get("site");
+
   const router = useRouter();
 
   const handleSearch = async () => {
@@ -46,7 +50,7 @@ export default function Searchbar() {
   };
 
   const handleAddressSelect = (address) => {
-    const url = `/map?lat=${address.latlng.lat}&lng=${address.latlng.lng}&address=${address.text}&addressId=${address.id}`;
+    const url = `/map?lat=${address.latlng.lat}&lng=${address.latlng.lng}&address=${address.text}&addressId=${address.id}&site=${site}`;
     router.push(url);
   };
 
