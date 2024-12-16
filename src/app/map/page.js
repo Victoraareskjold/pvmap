@@ -437,13 +437,14 @@ export default function Map() {
                         .findIndex((r) => r.id === roof.id) + 1;
 
                     return (
-                      <li
-                        key={index}
-                        className="cursor-pointer"
-                        onClick={() => toggleRoof(roof.id, !isChecked[roof.id])}
-                      >
+                      <li key={index} className="">
                         <div className="flex flex-col w-full gap-4 py-4">
-                          <div className="flex flex-row gap-4">
+                          <div
+                            onClick={() =>
+                              toggleRoof(roof.id, !isChecked[roof.id])
+                            }
+                            className="flex flex-row gap-4 cursor-pointer"
+                          >
                             {/* Check */}
                             <input
                               type="checkbox"

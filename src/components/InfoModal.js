@@ -11,7 +11,7 @@ export default function InfoModal({ isOpen, onClose, content }) {
         onClick={onClose} // Lukker modal ved klikk på overlay
       ></div>
       <div
-        className="absolute bottom-8 z-50 border rounded-xl "
+        className="absolute bottom-20 z-50 border rounded-xl "
         style={{ background: "#FFEADA", borderColor: "#000000" }}
       >
         <div className="flex flex-col p-2 gap-2">
