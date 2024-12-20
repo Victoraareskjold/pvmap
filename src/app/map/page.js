@@ -409,7 +409,7 @@ export default function Map() {
             />
             <SelectOption
               title="Paneltype:"
-              options={["Premium - 410 W", "Pro - 440 W", "Max Power - 455 W"]}
+              options={["Premium - 440 W", "Max Power - 455 W"]}
               onSelect={handlePanelTypeChange}
             />
           </div>

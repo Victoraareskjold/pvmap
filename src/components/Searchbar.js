@@ -58,7 +58,7 @@ export default function Searchbar() {
     <div className="flex flex-col gap-4">
       <div
         className="flex flex-row justify-between border p-2 bg-white gap-2 rounded-xl"
-        style={{ maxWidth: "450px" }}
+        style={{ maxWidth: "550px" }}
       >
         <div className="flex flex-row gap-2 w-full">
           <img src="/pin.png" className="h-8" />
