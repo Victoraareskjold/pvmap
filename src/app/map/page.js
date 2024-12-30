@@ -4,11 +4,11 @@ import { Suspense, useEffect, useState } from "react";
 
 import SelectOption from "../../components/SelectOption";
 
-import PriceEstimator from "../../components/PriceEstimator";
 import Image from "next/image";
-import SendModal from "../../components/SendModal";
-import InfoModal from "../../components/InfoModal";
 import { useRouter } from "next/navigation";
+import InfoModal from "../../components/InfoModal";
+import PriceEstimator from "../../components/PriceEstimator";
+import SendModal from "../../components/SendModal";
 
 import dynamic from "next/dynamic";
 
@@ -179,6 +179,7 @@ export default function Map() {
           })
           .slice(0, 2);
 
+        // juster slider til å halvere med mindre det er < 12 paneler, da skal det til 6.
         const initialPanelCounts = fullData.reduce((acc, roof) => {
           if (topTwoRoofs.some((topRoof) => topRoof.id === roof.id)) {
             acc[roof.id] = Math.ceil(roof.panels.panelCount / 2);

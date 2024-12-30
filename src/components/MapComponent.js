@@ -1,11 +1,11 @@
 "use client";
-import { useEffect } from "react";
 import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import {
   webatlasTileLayer,
   WebatlasTileLayerTypes,
 } from "leaflet-webatlastile";
+import "leaflet/dist/leaflet.css";
+import { useEffect } from "react";
 
 const MapComponent = ({
   lat,
@@ -92,24 +92,16 @@ const MapComponent = ({
               );
 
               function getColorCategory(azimuth, tilt) {
-                if (Math.abs(azimuth) <= 10 && tilt >= 20 && tilt <= 90) {
+                if (Math.abs(azimuth) <= 20 && tilt >= 15 && tilt <= 50) {
                   return "#FF0000"; // Svært god
                 }
-                if (
-                  (azimuth >= 0 && azimuth <= 30 && tilt >= 10 && tilt <= 20) ||
-                  (Math.abs(azimuth) <= 30 && tilt >= 20 && tilt <= 90)
-                ) {
+                if (Math.abs(azimuth) <= 60 && tilt >= 10 && tilt <= 60) {
                   return "#FF8800"; // God
                 }
-                if (Math.abs(azimuth) <= 120 && tilt >= 0 && tilt <= 60) {
+                if ((tilt >= 0 && tilt <= 8) || Math.abs(azimuth) <= 110) {
                   return "#FFF600"; // Middels
                 }
-
-                if (Math.abs(azimuth) > 120 && tilt >= 0 && tilt <= 10) {
-                  return "#FFF600"; // Middels
-                }
-
-                if (Math.abs(azimuth) > 120 && tilt >= 10 && tilt <= 15) {
+                if (Math.abs(azimuth) <= 120 && tilt > 8 && tilt <= 90) {
                   return "#D4FF00"; // Under middels
                 }
 
