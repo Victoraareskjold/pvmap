@@ -1,3 +1,4 @@
+
 "use client";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -217,37 +218,37 @@ export default function Map() {
 
     setYearlyProd(totalProduction);
   }, [adjustedPanelCounts, isChecked, combinedData, selectedElPrice]);
+  
+useEffect(() => {
+  const fetchGoogleSheetsData = async () => {
+    try {
+      const response = await fetch("/api/googleSheets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ totalPanels }),
+      });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (totalPanels < 0) {
+      if (!response.ok) {
+        console.error(`Feil under henting av data: ${response.status}`);
         return;
       }
-      try {
-        setIsLoading(true);
-        const response = await fetch("/api/googleSheets", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            totalPanels,
-          }),
-        });
-        const data = await response.json();
-        setSheetData(data.data);
 
-        if (data.valueFromB2) {
-          setYearlyCost(parseFloat(data.valueFromB2));
-        }
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Feil ved henting av sheet data:", error);
-      }
-    };
+      const data = await response.json();
+      console.log("Google Sheets API response:", data); // Log API response
 
-    fetchData();
-  }, [totalPanels]);
+      // Oppdater kostnad med fallback hvis data mangler
+      setYearlyCost(parseFloat(data.valueFromB2 || 0));
+    } catch (error) {
+      console.error("Feil under henting av data fra Google Sheets:", error);
+    }
+  };
+
+  if (totalPanels > 0) {
+    fetchGoogleSheetsData();
+  } else {
+    console.warn("Ingen paneler valgt. Årlig kostnad kan ikke beregnes.");
+  }
+}, [totalPanels]);
 
   const evaluateDirection = (direction) => {
     const normalizedDirection = direction % 360;
@@ -312,6 +313,51 @@ export default function Map() {
       return matches[0];
     }
   };
+  const [desiredKWh, setDesiredKWh] = useState(0); // State for strømforbruk
+  const [coveragePercentage, setCoveragePercentage] = useState(0); // State for prosent
+  
+  const handleCalculatePanels = () => {
+    if (!desiredKWh || coveragePercentage < 1 || coveragePercentage > 100) {
+      if (!desiredKWh) {
+        alert("Fyll ut alle felter for beregning.");
+        return;
+      }
+      if (coveragePercentage < 1 || coveragePercentage > 100) {
+        alert("Skriv inn et tall mellom 1-100.");
+        return;
+      }
+    }
+  
+    const energyRequirement = (desiredKWh * coveragePercentage) / 100;
+    let remainingEnergy = energyRequirement;
+  
+    const updatedPanelCounts = { ...adjustedPanelCounts };
+  
+    combinedData.forEach((roof) => {
+      if (remainingEnergy > 0) {
+        const availablePanels = roof.panels.panelCount;
+        const panelsForRoof = Math.min(
+          Math.ceil(remainingEnergy / (roof.efficiencyPerPanel || 0)),
+          availablePanels
+        );
+  
+        updatedPanelCounts[roof.id] = panelsForRoof;
+        remainingEnergy -= panelsForRoof * (roof.efficiencyPerPanel || 0);
+      }
+    });
+  
+    if (remainingEnergy > 0) {
+      console.warn(`Kan ikke dekke ${remainingEnergy.toFixed(2)} kWh.`);
+    }
+  
+    setAdjustedPanelCounts(updatedPanelCounts);
+  
+    // Scroll to results on mobile
+    if (window.innerWidth < 768) {
+      const resultContainer = document.getElementById("result-container");
+      resultContainer?.scrollIntoView({ behavior: "smooth" });
+    }
+  };  
 
   const checkedRoofData = combinedData
     .filter((roof) => isChecked[roof.id])
@@ -410,13 +456,54 @@ export default function Map() {
             />
             <SelectOption
               title="Paneltype:"
-              options={["Premium - 440 W", "Max Power - 455 W"]}
+              options={["Premium 440 W", "Max Power 455 W"]}
               onSelect={handlePanelTypeChange}
             />
           </div>
           <p className="text-sm">
             Takflater på eiendommen - Sortert fra mest til minst solinnstråling
           </p>
+          <div className="calculator-container">
+            <h2>Finn ut hvor mange solcellepaneler du trenger</h2>
+            <p>Skriv inn ditt årlige strømforbruk i kWh (for eksempel: 25 000):</p>
+            <div className="input-section">
+              <div className="input-with-tooltip">
+                <span className="tooltip-icon">i</span>
+                <input
+                  id="kwh-input"
+                  type="number"
+                  value={desiredKWh}
+                  onChange={(e) => setDesiredKWh(Number(e.target.value))}
+                  placeholder="27 500"
+                />
+                <span className="unit">kWh</span>
+              </div>
+            </div>
+            <p>Basert på et forbruk på {desiredKWh || "27 500"} kWh, anbefaler vi egen produksjon på <strong>11 000 kWh.</strong></p>
+            <p>Dette vil dekke ditt årlige strømbehov med:</p>
+            <div className="input-section">
+              <div className="input-with-tooltip">
+                <span className="tooltip-icon">i</span>
+                <input
+                  id="percent-input"
+                  type="number"
+                  value={coveragePercentage}
+                  onChange={(e) => setCoveragePercentage(Number(e.target.value))}
+                  placeholder="40"
+                />
+                <span className="unit">%</span>
+              </div>
+            </div>
+            <p>Trykk på knappen for å beregne antall solcellepaneler du trenger for å oppnå <strong>11 000 kWh.</strong></p>
+            <button
+              id="calculate-button"
+              className="calculate-button"
+              onClick={handleCalculatePanels}
+            >
+              Beregn paneler
+            </button>
+            <div id="result-container"></div>
+          </div>
 
           {combinedData.length > 0 && (
             <ul>
@@ -507,20 +594,20 @@ export default function Map() {
             </ul>
           )}
 
-          <div className="flex flex-row gap-4 justify-between">
-            <p className="self-center text-xl">
-              Sum paneler{" "}
-              <span className="font-medium">({selectedPanelType})</span>:
+          <div className="p-4 bg-[#fefaf5] rounded-lg border border-[#ffa726] shadow-md">
+          <div className="flex flex-row items-center justify-between mb-4">
+            <p className="text-lg font-semibold text-[#333]">
+              Panelmengde{" "}
+              <span className="font-bold">({selectedPanelType})</span>:
             </p>
-            <p className="border-2 border-orange-500 p-2 rounded-md text-black">
+            <div className="px-4 py-2 border-2 border-[#ff9800] rounded-md bg-white text-[#333] font-semibold">
               {totalPanels} paneler
-            </p>
+            </div>
           </div>
-          <p className="text-sm">
-            Panelene leveres med 30 års produkt- og effektgaranti. Prisen
-            inkluderer alt fra A-Å, uten skjulte kostnader – komplett
-            solcelleanlegg.
+          <p className="text-sm text-[#666]">
+            Panelene leveres med 30 års produkt- og effektgaranti. Prisen inkluderer alt fra A-Å, uten skjulte kostnader – komplett solcelleanlegg.
           </p>
+        </div>
 
           <div className="block md:hidden">
             <PriceEstimator onSelect={handleSelectedElPrice} />
