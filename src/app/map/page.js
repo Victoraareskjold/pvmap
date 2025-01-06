@@ -1,4 +1,3 @@
-
 "use client";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -236,7 +235,7 @@ useEffect(() => {
       const data = await response.json();
       console.log("Google Sheets API response:", data); // Log API response
 
-      // Oppdater kostnad med fallback hvis data mangler
+     
       setYearlyCost(parseFloat(data.valueFromB2 || 0));
     } catch (error) {
       console.error("Feil under henting av data fra Google Sheets:", error);
@@ -272,10 +271,10 @@ useEffect(() => {
     console.log(roofId);
 
     if (isChecked) {
-      // Legg til takflaten i listen
+      
       setVisibleRoofs((prev) => [...prev, roofId]);
     } else {
-      // Fjern takflaten fra listen
+     
       setVisibleRoofs((prev) => prev.filter((roofId) => roofId !== roofId));
     }
 
@@ -313,51 +312,89 @@ useEffect(() => {
       return matches[0];
     }
   };
+  
   const [desiredKWh, setDesiredKWh] = useState(0); // State for strømforbruk
   const [coveragePercentage, setCoveragePercentage] = useState(0); // State for prosent
+  const [errors, setErrors] = useState({ kWh: "", percentage: "" }); // State for feil
+
+  const handleKWhChange = (e) => {
+  const rawValue = e.target.value.replace(/\s/g, ""); // Remove any spaces
+  const numericValue = Number(rawValue); // Convert to number
+  if (!isNaN(numericValue)) {
+    setDesiredKWh(numericValue);
+  }
+};
+const handlePercentageChange = (e) => {
+  const rawValue = e.target.value.replace(/\s/g, ""); // Remove spaces
+  const numericValue = Number(rawValue); // Convert to number
   
-  const handleCalculatePanels = () => {
-    if (!desiredKWh || coveragePercentage < 1 || coveragePercentage > 100) {
-      if (!desiredKWh) {
-        alert("Fyll ut alle felter for beregning.");
-        return;
-      }
-      if (coveragePercentage < 1 || coveragePercentage > 100) {
-        alert("Skriv inn et tall mellom 1-100.");
-        return;
+  if (!isNaN(numericValue) && numericValue >= 0 && numericValue <= 100) {
+    setCoveragePercentage(numericValue); // Update the percentage in state
+  } else if (numericValue > 100) {
+    setCoveragePercentage(100); // Cap it at 100 if exceeded
+  } else if (numericValue < 0) {
+    setCoveragePercentage(0); // Cap it at 0 if below the range
+  }
+};
+
+const handleCalculatePanels = () => {
+  const newErrors = { kWh: "", percentage: "", calculation: "" };
+
+  if (!desiredKWh || desiredKWh <= 0) {
+    newErrors.kWh = "Skriv inn ønsket årlig strømforbruk (kWh).";
+  }
+  if (coveragePercentage < 1 || coveragePercentage > 100) {
+    newErrors.percentage = "Dekningsprosent må være et tall mellom 1 og 100.";
+  }
+
+  setErrors(newErrors);
+
+  if (newErrors.kWh || newErrors.percentage) return;
+
+  const energyRequirement = (desiredKWh * coveragePercentage) / 100;
+  let remainingEnergy = energyRequirement;
+
+  const updatedPanelCounts = {};
+  const updatedIsChecked = {};
+
+  const sortedRoofs = combinedData.sort(
+    (a, b) => b.efficiencyPerPanel - a.efficiencyPerPanel
+  );
+
+  for (const roof of sortedRoofs) {
+    if (remainingEnergy <= 0) break;
+
+    if (!roof.isExcluded) {
+      const availablePanels = roof.panels.panelCount;
+      const panelsNeeded = Math.min(
+        Math.ceil(remainingEnergy / (roof.efficiencyPerPanel || 1)),
+        availablePanels
+      );
+
+      if (panelsNeeded > 0) {
+        updatedIsChecked[roof.id] = true;
+        updatedPanelCounts[roof.id] = panelsNeeded;
+        remainingEnergy -= panelsNeeded * roof.efficiencyPerPanel;
       }
     }
-  
-    const energyRequirement = (desiredKWh * coveragePercentage) / 100;
-    let remainingEnergy = energyRequirement;
-  
-    const updatedPanelCounts = { ...adjustedPanelCounts };
-  
-    combinedData.forEach((roof) => {
-      if (remainingEnergy > 0) {
-        const availablePanels = roof.panels.panelCount;
-        const panelsForRoof = Math.min(
-          Math.ceil(remainingEnergy / (roof.efficiencyPerPanel || 0)),
-          availablePanels
-        );
-  
-        updatedPanelCounts[roof.id] = panelsForRoof;
-        remainingEnergy -= panelsForRoof * (roof.efficiencyPerPanel || 0);
-      }
-    });
-  
-    if (remainingEnergy > 0) {
-      console.warn(`Kan ikke dekke ${remainingEnergy.toFixed(2)} kWh.`);
-    }
-  
-    setAdjustedPanelCounts(updatedPanelCounts);
-  
-    // Scroll to results on mobile
-    if (window.innerWidth < 768) {
-      const resultContainer = document.getElementById("result-container");
-      resultContainer?.scrollIntoView({ behavior: "smooth" });
-    }
-  };  
+  }
+
+  if (remainingEnergy > 0) {
+    setErrors((prev) => ({
+      ...prev,
+      calculation: `Kan ikke dekke ${remainingEnergy.toFixed(
+        2
+      )} kWh med tilgjengelige takflater.`,
+    }));
+  }
+
+  setAdjustedPanelCounts(updatedPanelCounts);
+  setIsChecked(updatedIsChecked);
+
+  if (window.innerWidth < 768) {
+    document.getElementById("result-container")?.scrollIntoView({ behavior: "smooth" });
+  }
+};
 
   const checkedRoofData = combinedData
     .filter((roof) => isChecked[roof.id])
@@ -471,30 +508,46 @@ useEffect(() => {
                 <span className="tooltip-icon">i</span>
                 <input
                   id="kwh-input"
-                  type="number"
-                  value={desiredKWh}
-                  onChange={(e) => setDesiredKWh(Number(e.target.value))}
+                  type="text"
+                  value={desiredKWh.toLocaleString("nb-NO")}
+                  onChange={handleKWhChange}
                   placeholder="27 500"
                 />
                 <span className="unit">kWh</span>
               </div>
+              {errors.kWh && <span className="error-message">{errors.kWh}</span>}
             </div>
-            <p>Basert på et forbruk på {desiredKWh || "27 500"} kWh, anbefaler vi egen produksjon på <strong>11 000 kWh.</strong></p>
+            <p>
+              Basert på et forbruk på{" "}
+              {desiredKWh ? desiredKWh.toLocaleString("nb-NO") : "27 500"} kWh, anbefaler
+              vi egen produksjon på{" "}
+              <strong>
+                {(desiredKWh * coveragePercentage / 100 || 11000).toLocaleString("nb-NO")}{" "}
+                kWh.
+              </strong>
+            </p>
             <p>Dette vil dekke ditt årlige strømbehov med:</p>
             <div className="input-section">
               <div className="input-with-tooltip">
                 <span className="tooltip-icon">i</span>
                 <input
                   id="percent-input"
-                  type="number"
-                  value={coveragePercentage}
-                  onChange={(e) => setCoveragePercentage(Number(e.target.value))}
+                  type="text"
+                  value={coveragePercentage.toLocaleString("nb-NO")}
+                  onChange={handlePercentageChange}
                   placeholder="40"
                 />
                 <span className="unit">%</span>
               </div>
+              {errors.percentage && <span className="error-message">{errors.percentage}</span>}
             </div>
-            <p>Trykk på knappen for å beregne antall solcellepaneler du trenger for å oppnå <strong>11 000 kWh.</strong></p>
+            <p>
+              Trykk på knappen for å beregne antall solcellepaneler du trenger for å oppnå{" "}
+              <strong>
+                {(desiredKWh * coveragePercentage / 100 || 11000).toLocaleString("nb-NO")}{" "}
+                kWh.
+              </strong>
+            </p>
             <button
               id="calculate-button"
               className="calculate-button"
@@ -502,9 +555,10 @@ useEffect(() => {
             >
               Beregn paneler
             </button>
-            <div id="result-container"></div>
+            <div id="result-container">
+            {errors.calculation && <span className="error-message">{errors.calculation}</span>}
           </div>
-
+         </div>
           {combinedData.length > 0 && (
             <ul>
               {combinedData
