@@ -80,3 +80,191 @@ input[type="range"]:disabled {
 .funky:disabled {
   opacity: 0.5;
 }
+
+.input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 12px;
+}
+
+.input-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  border: 2px solid #ccc;
+  border-radius: 12px;
+  padding: 10px 15px;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+  background-color: #fff;
+}
+
+.input-field:focus-within {
+  border-color: #ff9d00;
+  background-color: rgba(255, 153, 0, 0.1);
+}
+
+.input-field input {
+  border: none;
+  outline: none;
+  font-size: 16px;
+  flex: 1;
+  text-align: left;
+}
+
+.input-field span {
+  font-size: 16px;
+  color: #555;
+  margin-left: 5px;
+}
+
+.calculate-button {
+  display: inline-block;
+  background: linear-gradient(90deg, #ff9d00 23%, #ffd05a 92%);
+  color: 333;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.calculate-button:hover {
+  background: #cc7a00;
+  transform: translateY(-1px);
+}
+
+.calculate-button:active {
+  background: #995c00;
+  transform: translateY(1px);
+}
+
+.calculate-button:disabled {
+  background: #f0f0f0;
+  color: #888;
+  cursor: not-allowed;
+}
+
+/* Informasjonsstil */
+.info-box {
+  font-size: 14px;
+  color: #555;
+  border-left: 3px solid #ff9d00;
+  padding: 10px;
+  background: #fffaf0;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+.info-box p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Container for layout */
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.calculator-container {
+  max-width: 350px;
+  padding: 20px;
+  border: 2px solid #ffad2a;
+  border-radius: 10px;
+  background-color: #fff;
+  font-family: Arial, sans-serif;
+}
+
+h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+p {
+  font-size: 14px;
+  margin: 10px 0;
+}
+
+.input-section {
+  margin: 15px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.input-with-tooltip {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.input-with-tooltip input {
+  flex-grow: 1;
+  padding-right: 40px; /* Space for the unit */
+  text-align: left; /* Align the number to the left */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 16px;
+}
+
+.input-with-tooltip .unit {
+  position: absolute;
+  right: 10px;
+  font-size: 16px;
+  color: #666;
+}
+
+
+.tooltip-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: white;
+  color: #333;
+  border: 3px solid #333;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+.tooltip-icon:hover::after {
+  content: "Usikker på hva dette betyr? Sjekk detaljene.";
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+input[type="number"] {
+  width: 100px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.unit {
+  font-size: 14px;
+  color: #555;
+  margin-left: 5px;
+}
