@@ -87,13 +87,24 @@ export default function Map() {
     setOpenModal(null);
   };
   const handleFormSubmit = async () => {
+
+    if (combinedData.filter((roof) => isChecked[roof.id]).length === 0) {
+      alert("⚠️ Velg minst én takflate før du sender.");
+      return;
+    }
+  
+    if (yearlyCost === 0) {
+      alert("⚠️ Årlig kostnad er ikke beregnet. Prøv igjen.");
+      return;
+    }
+  
     const formData = {
-      name: "kundenavn", 
-      email: "kunde@example.com", 
-      phone: "12345678", 
+      name,
+      email,
+      phone,
       address,
       site,
-      checked: false, 
+      checked: false,
       selectedRoofType,
       selectedPanelType,
       selectedElPrice,
@@ -103,18 +114,17 @@ export default function Map() {
       yearlyConsumption: desiredKWh,
       coveragePercentage,
       checkedRoofData: combinedData
-        .filter((roof) => isChecked[roof.id])
-        .reduce((acc, roof) => {
-          acc[roof.id] = {
-            roofId: roof.id,
-            adjustedPanelCount: adjustedPanelCounts[roof.id] || roof.panels.panelCount,
-            maxPanels: roof.panels.panelCount,
-            direction: roof.direction,
-            angle: roof.angle,
-          };
-          return acc;
-        }, {}),
+      .filter((roof) => isChecked[roof.id])
+      .map((roof) => ({
+        roofId: roof.id,
+        adjustedPanelCount: adjustedPanelCounts[roof.id] || roof.panels.panelCount,
+        maxPanels: roof.panels.panelCount,
+        direction: roof.direction,
+        angle: roof.angle,
+      })),
     };
+
+    console.log("📦 Data to be sent:", formData);  // Log the data being sent
   
     try {
       const response = await fetch("/api/sendMail", {
@@ -123,17 +133,23 @@ export default function Map() {
         body: JSON.stringify(formData),
       });
   
+      console.log("📨 Server response status:", response.status);  // Log server response status
+  
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("Feil under sending av e-post:", errorData.error);
+        console.error("❌ Feil under sending av e-post:", errorData.error);
         alert("Kunne ikke sende e-post. Prøv igjen.");
+      } else {
+        const successData = await response.json();
+        console.log("✅ E-post sendt! Server response:", successData);  // Success log
+        alert("E-posten ble sendt!");
       }
     } catch (error) {
-      console.error("Feil under forespørsel:", error);
+      console.error("❌ Feil under forespørsel:", error);  // Log any fetch errors
       alert("En feil oppsto. Vennligst prøv igjen.");
     }
-  };  
-
+  };
+  
   useEffect(() => {
     const fetchApiKey = async () => {
       try {
@@ -292,10 +308,12 @@ useEffect(() => {
   };
 
   if (totalPanels > 0) {
+    console.log("🔍 Henter årlig kostnad for antall paneler:", totalPanels);
     fetchGoogleSheetsData();
   } else {
-    console.warn("Ingen paneler valgt. Årlig kostnad kan ikke beregnes.");
+    console.warn("⚠️ Ingen paneler valgt. Årlig kostnad kan ikke beregnes.");
   }
+  
 }, [totalPanels]);
 
   const evaluateDirection = (direction) => {
@@ -319,14 +337,12 @@ useEffect(() => {
     }));
     console.log(roofId);
 
-    if (isChecked) {
-      
+    if (isCheckedNow) {
       setVisibleRoofs((prev) => [...prev, roofId]);
     } else {
-     
-      setVisibleRoofs((prev) => prev.filter((roofId) => roofId !== roofId));
+      setVisibleRoofs((prev) => prev.filter((id) => id !== roofId));
     }
-
+    
     setAdjustedPanelCounts((prev) => ({
       ...prev,
       [roofId]: isCheckedNow
@@ -480,45 +496,43 @@ useEffect(() => {
     }
   };
   
-    useEffect(() => {
-        const updatedCheckedRoofData = combinedData
-          .filter((roof) => isChecked[roof.id]) // Bare valgte takflater
-          .reduce((acc, roof) => {
-            acc[roof.id] = {
-              roofId: roof.id,
-              adjustedPanelCount: adjustedPanelCounts[roof.id] || roof.panels.panelCount,
-              maxPanels: roof.panels.panelCount,
-              direction: roof.direction,
-              angle: roof.angle,
-            };
-            return acc;
-          }, {});
-        
-      console.log("Updated Checked Roof Data:", updatedCheckedRoofData); 
-
-       setCheckedRoofData(updatedCheckedRoofData);
-
-       setModalData({
-          checkedRoofData: updatedCheckedRoofData,
-          totalPanels,
-          selectedElPrice,
-          selectedRoofType,
-          selectedPanelType,
-          yearlyProd,
-          yearlyCost,
-          address,
-        });
-      }, [
-        isChecked, 
-        adjustedPanelCounts, 
-        totalPanels, 
-        selectedElPrice, 
-        selectedRoofType, 
-        selectedPanelType, 
-        yearlyProd, 
-        yearlyCost,
-      ]);
-      
+  useEffect(() => {
+    const updatedCheckedRoofData = combinedData
+      .filter((roof) => isChecked[roof.id])
+      .map((roof) => ({
+        roofId: roof.id,
+        adjustedPanelCount: adjustedPanelCounts[roof.id] || roof.panels.panelCount,
+        maxPanels: roof.panels.panelCount,
+        direction: roof.direction,
+        angle: roof.angle,
+      }));
+  
+    console.log("✅ Updated Checked Roof Data:", updatedCheckedRoofData);
+    setCheckedRoofData(updatedCheckedRoofData);
+  
+    
+    setModalData({
+      checkedRoofData: updatedCheckedRoofData,
+      totalPanels,
+      selectedElPrice,
+      selectedRoofType,
+      selectedPanelType,
+      yearlyProd,
+      yearlyCost,
+      address,
+    });
+  }, [
+    isChecked,
+    adjustedPanelCounts,
+    combinedData,  
+    totalPanels,
+    selectedElPrice,
+    selectedRoofType,
+    selectedPanelType,
+    yearlyProd,
+    yearlyCost,
+  ]);
+  
   const routeBack = () => {
     router.push("/");
   };
