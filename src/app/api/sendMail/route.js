@@ -23,7 +23,7 @@ export async function POST(req) {
 
     const msg = {
       to: `victor.aareskjold@icloud.com`,
-      from: "victor.aaareskjold@gmail.com",
+      from: "victor.aareskjold@gmail.com",
       subject: `${name} har etterspurt et solcelleestimat!`,
       text: `
       Nettside: ${site}
@@ -33,7 +33,6 @@ export async function POST(req) {
       Adresse: ${address}
       Vil bli ringt? ${checked}
       Telefon: ${phone}
-
 
       Type paneler: ${selectedPanelType}
       Taktype: ${selectedRoofType}
@@ -47,12 +46,22 @@ export async function POST(req) {
       Årlig kostnad: ${yearlyCost.toFixed(0)}`,
     };
 
-    await sendGridMail.send(msg);
-    return NextResponse.json({ message: "E-post sendt!" }, { status: 200 });
+    try {
+      await sendGridMail.send(msg);
+      console.log("✅ E-post sendt!");
+      return NextResponse.json({ message: "E-post sendt!" }, { status: 200 });
+    } catch (error) {
+      console.error("❌ SendGrid-feil:", error.response?.body || error.message);
+      return NextResponse.json(
+        { error: "Feil under sending av e-post", details: error.message },
+        { status: 500 }
+      );
+    }
   } catch (error) {
+    console.error("❌ Error processing the request:", error.message);
     return NextResponse.json(
-      { error: "Feil under sending av e-post" },
-      { status: 500 }
+      { error: "Feil under behandling av forespørsel", details: error.message },
+      { status: 400 }
     );
   }
 }
