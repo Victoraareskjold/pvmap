@@ -202,7 +202,28 @@ input[type="range"]:disabled {
     grid-template-columns: 1fr; /* Stack vertically on smaller screens */
   }
 }
+@media (max-width: 768px) {
+  .calculator-container {
+    width: 350px; /* Allow the container to take full width on small screens */
+    margin: 0 auto; /* Center the container horizontally */
+    margin-top: 30px; /* Add some top margin for spacing */
+    padding: 20px;
+    border: 2px solid #ffad2a;
+    border-radius: 10px;
+    background-color: #fff;
+    font-family: Arial, sans-serif;
+  }
 
+  /* Ensure the container is centered within the viewport vertically too */
+  .container {
+    display: flex;
+    flex-direction: column; /* Stack the contents vertically */
+    align-items: center; /* Center the content horizontally */
+    justify-content: center; /* Center the content vertically */
+    height: 100vh; /* Take full height of the screen */
+    padding: 20px;
+  }
+}
 .calculator-container {
   max-width: 350px;
   padding: 20px;
