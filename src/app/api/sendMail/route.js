@@ -21,17 +21,25 @@ export async function POST(req) {
       site,
     } = await req.json();
 
+    // ✅ Input Validation
+    if (!name || !email || !address || !phone) {
+      return NextResponse.json(
+        { error: "Manglende påkrevde felter: navn, e-post, adresse, eller telefon." },
+        { status: 400 }
+      );
+    }
+
     const msg = {
-      to: `victor.aareskjold@icloud.com`,
+      to: "victor.aareskjold@icloud.com",
       from: "victor.aareskjold@gmail.com",
       subject: `${name} har etterspurt et solcelleestimat!`,
       text: `
       Nettside: ${site}
-      
+
       Navn: ${name}
-      Emai: ${email}
+      Email: ${email}
       Adresse: ${address}
-      Vil bli ringt? ${checked}
+      Vil bli ringt? ${checked ? "Ja" : "Nei"}
       Telefon: ${phone}
 
       Type paneler: ${selectedPanelType}
@@ -40,28 +48,23 @@ export async function POST(req) {
       Estimert elektrisitetspris: ${selectedElPrice} kr/kWh
       Antall paneler: ${totalPanels}
 
+      Takdata:
       ${JSON.stringify(checkedRoofData, null, 2)}
 
-      Årlig produksjon: ${yearlyProd.toFixed(0)}
-      Årlig kostnad: ${yearlyCost.toFixed(0)}`,
+      Årlig produksjon: ${yearlyProd?.toFixed(0) || "Ikke tilgjengelig"}
+      Årlig kostnad: ${yearlyCost?.toFixed(0) || "Ikke tilgjengelig"}
+      `,
     };
 
-    try {
-      await sendGridMail.send(msg);
-      console.log("✅ E-post sendt!");
-      return NextResponse.json({ message: "E-post sendt!" }, { status: 200 });
-    } catch (error) {
-      console.error("❌ SendGrid-feil:", error.response?.body || error.message);
-      return NextResponse.json(
-        { error: "Feil under sending av e-post", details: error.message },
-        { status: 500 }
-      );
-    }
+    // ✅ Attempt to Send Email
+    await sendGridMail.send(msg);
+    console.log("✅ E-post sendt!");
+    return NextResponse.json({ message: "E-post sendt!" }, { status: 200 });
   } catch (error) {
-    console.error("❌ Error processing the request:", error.message);
+    console.error("❌ SendGrid-feil:", error.response?.body || error.message || error);
     return NextResponse.json(
-      { error: "Feil under behandling av forespørsel", details: error.message },
-      { status: 400 }
+      { error: "Feil under sending av e-post", details: error.response?.body || error.message },
+      { status: 500 }
     );
   }
 }
