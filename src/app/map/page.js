@@ -498,7 +498,7 @@ useEffect(() => {
               apiKey={apiKey}
             />
           </Suspense>
-          <div className="hidden md:block mt-4">
+          <div className="hidden md:block mt-16">
             <PriceEstimator onSelect={handleSelectedElPrice} />
             <PanelMengde selectedPanelType={selectedPanelType} totalPanels={totalPanels} />
           </div>
@@ -506,12 +506,12 @@ useEffect(() => {
       </div>
   
  {/* Row 1 - Right Column */}
- <div className="flex flex-col gap-8 w-full max-w-3xl p-4 mx-auto md:w-[500px]">
+ <div className="flex flex-col gap-8 w-full max-w-3xl p-4 mx-auto">
   {/* Address Section */}
-  <div className="flex justify-between items-center w-full">
+  <div className="flex justify-between items-center w-full p-2">
     <h1 className="text-xl font-semibold">Adresse: {address}</h1>
     <button
-      className="bg-black text-white rounded-full text-sm py-1 px-4"
+      className="bg-black text-white rounded-full text-sm py-1.5 px-8"
       onClick={routeBack}
     >
       Nytt søk
@@ -543,10 +543,10 @@ useEffect(() => {
     />
   </div>
 
-  <p className="italic text-gray-600">
+  <p className="italic text-gray-600 pl-6">
     Klikk på takene i kartet for å legge til eller ta bort.
   </p>
-  <p className="text-sm">
+  <p className="text-sm ml-10">
     Takflater på eiendommen - Sortert fra mest til minst solinnstråling
   </p>
 
@@ -570,7 +570,7 @@ useEffect(() => {
       </div>
     )}
     {combinedData.length > 0 && (
-      <div className="hidden md:block">
+      <div className="hidden md:block flex flex-col gap-6 pl-10 md:w-[570px]">
         <RoofList
           roofs={combinedData}
           visibleRoofs={visibleRoofs}
@@ -686,7 +686,6 @@ useEffect(() => {
   </div>
   <div className="md:col-span-2 flex flex-col items-center gap-6 mt-8 px-4">
   {/* Top Divider */}
-  <div className="w-115 bg-black h-px mb-4"></div>
   <ul className="flex flex-col gap-4">
     <li className="flex flex-col justify-between font-light relative gap-2">
       <InfoModal
@@ -716,7 +715,7 @@ useEffect(() => {
         kWh
       </p>
       {/* Divider */}
-      <div className="w-96 bg-black h-px mx-auto"></div>
+      <div className="w-3/4 bg-black h-px mx-auto"></div>
     </li>
     <li className="flex flex-col justify-between font-light relative gap-2">
       <InfoModal
@@ -742,7 +741,7 @@ useEffect(() => {
         Kr
       </p>
       {/* Divider */}
-      <div className="w-96 bg-black h-px mx-auto"></div>
+      <div className="w-3/4 bg-black h-px mx-auto"></div>
     </li>
     <li className="flex flex-col justify-between font-light relative gap-2">
       <InfoModal
@@ -768,7 +767,7 @@ useEffect(() => {
         Kr
       </p>
       {/* Divider */}
-      <div className="w-96 bg-black h-px mx-auto"></div>
+       <div className="w-3/4 bg-black h-px mx-auto"></div>
     </li>
   </ul>
   <button
