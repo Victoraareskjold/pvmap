@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 
 function RoofList({
   roofs,
@@ -11,7 +11,7 @@ function RoofList({
   minPanels,
 }) {
   const [activeTooltip, setActiveTooltip] = useState(null);
-  const [expanded, setExpanded] = useState(true); // State for toggle interaction
+  const [expanded, setExpanded] = useState(false); // State for toggle interaction
 
   const handleToggleTooltip = (id) => {
     setActiveTooltip((prev) => (prev === id ? null : id));
@@ -44,10 +44,7 @@ function RoofList({
           adjustedPanelCounts[roof.id] ?? roof.panels.panelCount;
 
         return (
-          <li
-            key={roof.id}
-            className="flex flex-col gap-4 py-4 border-b border-gray-300"
-          >
+          <li key={roof.id} className="flex flex-col gap-4 py-4 border-b border-gray-300">
             {/* Hovedoverskrift for takflate */}
             <div className="flex flex-row gap-4 cursor-pointer">
               <input
@@ -126,22 +123,28 @@ function RoofList({
           </li>
         );
       })}
-      {/* Toggle interaction */}
-      {sortedRoofs.length > 2 && (
-        <div className="text-center mt-4 flex flex-col items-center">
-          <span
-            className="mt-1 cursor-pointer"
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded ? "ᐱ" : "ᐯ"}
-          </span>
-          <button className="text-black-600 text-sm mt-2" disabled>
-            {expanded ? "Se mindre" : "Se mer"}
-          </button>
-        </div>
-      )}
+{/* Toggle interaction */}
+{sortedRoofs.length > 2 && (
+  <div className="text-center mt-4 flex flex-col items-center">
+    <span
+      className="mt-1 cursor-pointer"
+      onClick={() => setExpanded(!expanded)}
+    >
+      {expanded ? "ᐱ" : "ᐯ"}
+    </span>
+    <button
+      className="text-black-600 text-sm mt-2"
+      disabled
+    >
+      {expanded ? "Se mindre" : "Se mer"}
+    </button>
+  </div>
+)}
+
     </ul>
   );
 }
 
 export default React.memo(RoofList);
+
+
