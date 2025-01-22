@@ -2,17 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-html {
-  width: 100%;
-}
-
+html,
 body {
-  width: 100%;
+  height: 100%;
+}
+.grid-container {
+  display: grid;
+  grid-template-columns: 1fr; /* Default single column */
+  gap: 16px;
 }
 
+@media (min-width: 768px) {
+  .grid-container {
+    grid-template-columns: repeat(2, 1fr); /* Two equal columns */
+  }
+}
 .background {
   background-image: url("/background.png");
-  height: 100vh;
+  min-height: 100%;
   width: 100vw;
   background-repeat: no-repeat;
   background-size: cover;
@@ -20,7 +27,6 @@ body {
   flex-direction: column;
   justify-content: center;
 }
-
 .map {
   width: 100%;
   height: 70vh;
@@ -33,7 +39,6 @@ input[type="range"] {
   border-radius: 5px;
   background: rgba(255, 149, 0, 0.27);
 }
-
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   height: 20px;
@@ -45,7 +50,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 input[type="range"]:disabled {
   opacity: 0.5;
-  cursor: not-allowed; /* Indikerer at elementet er deaktivert */
+  cursor: not-allowed;
 }
 
 .overlay {
@@ -54,8 +59,8 @@ input[type="range"]:disabled {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent svart */
-  z-index: 25; /* Skal være bak modalen, men foran kartet */
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 25;
 }
 
 .modal {
@@ -63,7 +68,12 @@ input[type="range"]:disabled {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  /* display: none; */
+}
+.divider {
+  background-color: black;
+  height: 1px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .funky {
@@ -75,8 +85,225 @@ input[type="range"]:disabled {
   font-weight: 600;
   text-wrap: nowrap;
   width: fit-content;
+  margin-top: 30px;
 }
 
 .funky:disabled {
   opacity: 0.5;
+}
+
+.hidden {
+  display: none;
+}
+
+.block {
+  display: block;
+}
+/* 
+@media (min-width: 1024px) {
+  .md\\:block {
+    display: block;
+  }
+
+  .md\\:hidden {
+    display: none;
+  }
+} */
+
+.input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 12px;
+}
+
+.input-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  border: 2px solid #ccc;
+  border-radius: 12px;
+  padding: 10px 15px;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+  background-color: #fff;
+}
+
+.input-field:focus-within {
+  border-color: #ff9d00;
+  background-color: rgba(255, 153, 0, 0.1);
+}
+
+.input-field input {
+  border: none;
+  outline: none;
+  font-size: 16px;
+  flex: 1;
+  text-align: left;
+}
+
+.input-field span {
+  font-size: 16px;
+  color: #555;
+  margin-left: 5px;
+}
+
+.calculate-button {
+  display: inline-block;
+  background: linear-gradient(90deg, #fff 23%, #ff9d00 82%);
+  color: 333;
+  border: none;
+  width: 150px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.calculate-button:hover {
+  border: 2px solid #ffad2a;
+}
+
+.calculate-button:active {
+  border: 2px solid #ffad2a;
+  border-radius: 20px;
+}
+
+.calculate-button:disabled {
+  background: #f0f0f0;
+  color: #888;
+  cursor: not-allowed;
+}
+
+/* Informasjonsstil */
+.info-box {
+  font-size: 14px;
+  color: #555;
+  border-left: 3px solid #ff9d00;
+  padding: 10px;
+  background: #fffaf0;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+.info-box p {
+  margin: 0;
+  line-height: 1.5;
+}
+.error-message {
+  color: red;
+}
+
+@media (max-width: 768px) {
+  .calculator-container {
+    width: 350px;
+    margin: 0 auto;
+    margin-top: 30px;
+    padding: 20px;
+    border: 2px solid #ffad2a;
+    border-radius: 1.5rem;
+    background-color: #fff;
+    font-family: Arial, sans-serif;
+  }
+}
+.calculator-container {
+  width: 550px;
+  padding: 25px;
+  border: 2px solid #ffad2a;
+  border-radius: 1.5rem;
+  background-color: #fff;
+  font-family: Arial, sans-serif;
+  margin: 0 auto;
+}
+
+h2 {
+  font-size: 18px;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+p {
+  font-size: 14px;
+  margin: 10px 0;
+}
+
+.input-section {
+  margin: 15px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+  gap: 10px;
+}
+.input-with-tooltip {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.input-with-tooltip input {
+  flex-grow: 1;
+  padding-right: 40px;
+  text-align: left;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 16px;
+  width: 150px;
+}
+
+.input-with-tooltip .unit {
+  position: absolute;
+  right: 10px;
+  font-size: 16px;
+  color: #666;
+}
+
+.tooltip-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: white;
+  color: #333;
+  border: 3px solid #333;
+  font-size: 13px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-right: 5px;
+}
+.tooltip-icon-slider {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: white;
+  color: #333;
+  border: 3px solid #333;
+  font-size: 13px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+input[type="number"] {
+  width: 100px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.unit {
+  font-size: 14px;
+  color: #555;
+  margin-left: 5px;
 }

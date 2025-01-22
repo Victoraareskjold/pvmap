@@ -15,38 +15,42 @@ export default function PriceEstimator({ onSelect }) {
 
   return (
     <div
-      className="bg-white rounded-3xl p-4 m-16 mx-auto max-w-lg gap-6 flex flex-col border-4"
+      className="bg-white rounded-3xl p-2 px-8 mx-auto gap-2 flex flex-col border-2 h-[250px] w-full"
       style={{ borderColor: "#FF9D00" }}
     >
-      <h1 className="text-center text-xl">
+      <h1 className="text-center text-lg mb-1">
         Din estimerte gjennomsnittlige strømpris.
       </h1>
-      <div className="flex flex-row gap-2">
-        <img src="/wave.png" className="w-6 h-6" />
-        <p className="text-center text-orange-500 text-sm">
-          Det handle ikke bare om kWh pris - solceller kutter også nettleien.
+
+      <div className="flex flex-row gap-1 mb-1 items-center">
+        <img src="/wave.png" className="w-4 h-4" />
+        <p className="text-center text-orange-500 text-xs">
+          Det handler ikke bare om kWh-pris – solceller kutter også nettleien.
         </p>
       </div>
 
-      <p className="text-center text-sm">
-        “Dra slideren og estimer gjennomsnittlig (kWh + nettleiepris).”
+      <p className="text-center text-xs mb-1">
+        Dra slideren og estimer gjennomsnittlig (kWh + nettleiepris).
       </p>
+
       <input
         type="range"
         min={0.1}
         max={6}
         step={0.1}
-        className="w-full sliderStyling self-center"
+        className="w-full sliderStyling self-center mb-1"
         value={elPrice}
         onChange={handleChange}
       />
-      <div className="flex flex-row justify-between">
-        <p>0 Kr</p>
-        <p>2 Kr</p>
-        <p>4 Kr</p>
-        <p>6 Kr</p>
+
+      <div className="flex flex-row justify-between mb-1">
+        <p className="text-xs">0 Kr</p>
+        <p className="text-xs">2 Kr</p>
+        <p className="text-xs">4 Kr</p>
+        <p className="text-xs">6 Kr</p>
       </div>
-      <p className="italic text-center">
+
+      <p className="italic text-center text-xs mt-2">
         Din anslåtte gjennomsnittlige strømpris:{" "}
         <span className="text-red-500">{elPrice}</span> kWh.
       </p>

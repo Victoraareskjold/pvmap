@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function SendModal({
   checkedRoofData,
@@ -80,38 +80,35 @@ export default function SendModal({
   };
 
   return (
-    <div className="flex flex-col gap-6 bg-white rounded-xl modal z-50 p-4 w-full max-w-md fixed">
+    <div className="flex flex-col gap-4 bg-white rounded-xl modal z-50 p-4 w-full max-w-md fixed">
       <button
         className="self-end text-orange-500 font-bold text-sm"
         onClick={toggleModal}
       >
         Lukk
       </button>
-      <h1 className="font-bold text-2xl">
-        Er du klar til å se hvor mye du kan spare?
-      </h1>
       <p className="text-md">
-        Få et estimat som gir deg en oversikt over årlige inntekter og
-        tilgjengelig offentlig støtte. Investering i solcellepaneler har nylig
-        blitt mye mer lønnsomt, noe som kan overraske deg positivt.
+        Informasjonen du har fylt ut i solkartet, sendes automatisk til oss.
+        Mangler noe, går det fint – vi lager et forslag som passer best for deg.
+        Fyll ut resten nedenfor for et uforpliktende tilbud.
       </p>
-      <h2 className="font-semibold">
-        Fyll ut detaljer for et uforpliktende estimat på e-post
-      </h2>
+      <label className="block text-sm font-medium">Fullt navn*</label>
       <input
-        className="border-2 border-slate-300 p-1 rounded-md"
-        placeholder="Ditt Navn"
+        className="w-full border rounded-md px-3 py-2 bg-zinc-200"
+        placeholder="Fornavn Etternavn"
         value={name}
         onChange={handleNameChange}
       />
+      <label className="block text-sm font-medium">Telefon*</label>
       <input
-        className="border-2 border-slate-300 p-1 rounded-md"
+        className="w-full border rounded-md px-3 py-2 bg-zinc-200"
         placeholder="Telefonnummer"
         value={phone}
         onChange={handlePhoneChange}
       />
+      <label className="block text-sm font-medium">E-post*</label>
       <input
-        className="border-2 border-slate-300 p-1 rounded-md"
+        className="w-full border rounded-md px-3 py-2 bg-zinc-200"
         type="email"
         placeholder="Din E-postaddresse"
         value={email}
@@ -120,17 +117,22 @@ export default function SendModal({
       <div className="flex flex-row gap-2">
         <input type="checkbox" value={checked} onChange={handleCheckChange} />
         <p>
-          For å sikre at prisestimatet blir korrekt, vil vi ringe deg hvis vi
-          trenger mer informasjon.
+          Jeg godtar at informasjonen brukes kun til å sende tilbud på
+          solcellepaneler via e-post og eventuelt kontakte meg på mobil.
         </p>
       </div>
       <button
-        className="bg-orange-500 rounded-xl p-1 text-white font-bold"
+        className="bg-red-500 self-center !w-full py-1 rounded-md text-sm funky mb-4 !mt-0"
         onClick={handleSend}
         disabled={loading}
       >
-        {loading ? "Sender..." : "Kom i gang"}
+        {loading ? "Sender..." : "Jeg ønsker uforpliktende tilbud"}
       </button>
+      <p className="italic">
+        Få et estimat som gir deg en oversikt over årlige inntekter og
+        tilgjengelig offentlig støtte. Investering i solcellepaneler har nylig
+        blitt mye mer lønnsomt, noe som kan overraske deg positivt.
+      </p>
     </div>
   );
 }
