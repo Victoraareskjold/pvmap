@@ -1,14 +1,14 @@
 "use client";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import "leaflet-webatlastile";
 import SelectOption from "@/components/SelectOption";
+import L from "leaflet";
+import "leaflet-webatlastile";
 import {
   webatlasTileLayer,
   WebatlasTileLayerTypes,
 } from "leaflet-webatlastile";
+import "leaflet/dist/leaflet.css";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function Map() {
   const searchParams = useSearchParams();
@@ -172,7 +172,7 @@ export default function Map() {
           />
           <SelectOption
             title="Paneltype:"
-            options={["Premium - 410 W", "Pro - 440 W", "Max Power - 455 W"]}
+            options={["Premium - 440 W", "Max Power - 455 W"]}
           />
         </div>
         <p>
@@ -210,7 +210,7 @@ export default function Map() {
           </ul>
         )}
         <div className="flex flex-row gap-4">
-          <p>Sum paneler (Premium 410W): </p>
+          <p>Sum paneler (Premium 440W): </p>
           <p className="bg-orange-500 p-2 rounded-md border border-white text-white">
             {totalPanelCount} {totalPanelCount > 1 ? "Paneler" : "Panel"}
           </p>
