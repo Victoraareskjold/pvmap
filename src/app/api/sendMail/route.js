@@ -34,7 +34,7 @@ export async function POST(req) {
 
     const msg = {
       to: "asbjorn@sooleklart.com",
-      from: "victor.aaareskjold@gmail.com",
+      from: "asbjorn@sooleklart.com",
       subject: `${name} har etterspurt et solcelleestimat!`,
       text: `Nettside: ${site}
       Navn: ${name}
