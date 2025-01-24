@@ -15,7 +15,7 @@ export default function SelectOption({ title, options = [], onSelect }) {
 
   return (
     <div className="flex flex-row gap-2">
-      <label className="min-w-24 xl:min-w-0">{title}</label>
+      <label className="min-w-20 xl:min-w-0">{title}</label>
       <select
         id="optionContainer"
         className="border border-orange-500 rounded-md p-1 text-sm w-52"

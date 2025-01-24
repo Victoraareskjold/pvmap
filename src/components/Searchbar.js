@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 export default function Searchbar() {
   const [query, setQuery] = useState("");
@@ -55,9 +55,9 @@ export default function Searchbar() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 w-full">
       <div
-        className="flex flex-row justify-between border p-2 bg-white gap-2 rounded-xl"
+        className="flex flex-row w-full justify-between border p-2 bg-white gap-2 rounded-xl"
         style={{ maxWidth: "550px" }}
       >
         <div className="flex flex-row gap-2 w-full">

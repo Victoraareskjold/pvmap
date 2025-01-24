@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import sendGridMail from "@sendgrid/mail";
+import { NextResponse } from "next/server";
 
 sendGridMail.setApiKey(process.env.SENDGRID);
 
@@ -24,18 +24,19 @@ export async function POST(req) {
     // ✅ Input Validation
     if (!name || !email || !address || !phone) {
       return NextResponse.json(
-        { error: "Manglende påkrevde felter: navn, e-post, adresse, eller telefon." },
+        {
+          error:
+            "Manglende påkrevde felter: navn, e-post, adresse, eller telefon.",
+        },
         { status: 400 }
       );
     }
 
     const msg = {
-      to: "victor.aareskjold@icloud.com",
-      from: "victor.aareskjold@gmail.com",
+      to: "asbjorn@sooleklart.com",
+      from: "victor.aaareskjold@gmail.com",
       subject: `${name} har etterspurt et solcelleestimat!`,
-      text: `
-      Nettside: ${site}
-
+      text: `Nettside: ${site}
       Navn: ${name}
       Email: ${email}
       Adresse: ${address}
@@ -52,8 +53,7 @@ export async function POST(req) {
       ${JSON.stringify(checkedRoofData, null, 2)}
 
       Årlig produksjon: ${yearlyProd?.toFixed(0) || "Ikke tilgjengelig"}
-      Årlig kostnad: ${yearlyCost?.toFixed(0) || "Ikke tilgjengelig"}
-      `,
+      Årlig kostnad: ${yearlyCost?.toFixed(0) || "Ikke tilgjengelig"}`,
     };
 
     // ✅ Attempt to Send Email
@@ -61,9 +61,15 @@ export async function POST(req) {
     console.log("✅ E-post sendt!");
     return NextResponse.json({ message: "E-post sendt!" }, { status: 200 });
   } catch (error) {
-    console.error("❌ SendGrid-feil:", error.response?.body || error.message || error);
+    console.error(
+      "❌ SendGrid-feil:",
+      error.response?.body || error.message || error
+    );
     return NextResponse.json(
-      { error: "Feil under sending av e-post", details: error.response?.body || error.message },
+      {
+        error: "Feil under sending av e-post",
+        details: error.response?.body || error.message,
+      },
       { status: 500 }
     );
   }

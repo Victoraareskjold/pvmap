@@ -4,14 +4,14 @@ import { Suspense, useEffect, useState } from "react";
 
 import SelectOption from "../../components/SelectOption";
 
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import InfoModal from "../../components/InfoModal";
-import PriceEstimator from "../../components/PriceEstimator";
 import PanelMengde from "../../components/PanelMengde";
-import SendModal from "../../components/SendModal";
+import PriceEstimator from "../../components/PriceEstimator";
 import RoofList from "../../components/RoofList";
-import dynamic from "next/dynamic";
+import SendModal from "../../components/SendModal";
 
 // Dynamisk import av kartkomponenten
 const MapComponent = dynamic(() => import("../../components/MapComponent"), {
@@ -30,7 +30,7 @@ export default function Map() {
   const [selectedRoofType, setSelectedRoofType] = useState(
     "Takstein (Dobbelkrummet)"
   );
-  const [selectedPanelType, setSelectedPanelType] = useState("Premium - 410 W");
+  const [selectedPanelType, setSelectedPanelType] = useState("Premium - 440 W");
   const [selectedElPrice, setSelectedElPrice] = useState(1.5);
 
   const [combinedData, setCombinedData] = useState([]);
@@ -45,8 +45,6 @@ export default function Map() {
     (total, count) => total + count,
     0
   );
-
-  console.log(site);
 
   const [visibleRoofs, setVisibleRoofs] = useState([]);
 
@@ -86,7 +84,7 @@ export default function Map() {
   const handleCloseModal = () => {
     setOpenModal(null);
   };
-  
+
   useEffect(() => {
     const fetchApiKey = async () => {
       try {
@@ -219,39 +217,44 @@ export default function Map() {
 
     setYearlyProd(totalProduction);
   }, [adjustedPanelCounts, isChecked, combinedData, selectedElPrice]);
-  
-useEffect(() => {
-  const fetchGoogleSheetsData = async () => {
-    try {
-      const response = await fetch("/api/googleSheets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ totalPanels }),
-      });
 
-      if (!response.ok) {
-        console.error(`Feil under henting av data: ${response.status}`);
-        return;
+  useEffect(() => {
+    const fetchGoogleSheetsData = async () => {
+      try {
+        const response = await fetch("/api/googleSheets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ totalPanels }),
+        });
+
+        if (!response.ok) {
+          console.error(`Feil under henting av data: ${response.status}`);
+          return;
+        }
+
+        const data = await response.json();
+        //console.log("Google Sheets API response:", data); // Log API response
+
+        setYearlyCost(parseFloat(data.valueFromB2 || 0));
+      } catch (error) {
+        console.error("Feil under henting av data fra Google Sheets:", error);
       }
+    };
 
-      const data = await response.json();
-      console.log("Google Sheets API response:", data); // Log API response
+    const debounceTimeout = setTimeout(() => {
+      if (totalPanels > 0) {
+        //console.log("🔍 Henter årlig kostnad for antall paneler:", totalPanels);
+        fetchGoogleSheetsData();
+      } else {
+        console.warn(
+          "⚠️ Ingen paneler valgt. Årlig kostnad kan ikke beregnes."
+        );
+      }
+    }, 500); // 500ms debounce
 
-     
-      setYearlyCost(parseFloat(data.valueFromB2 || 0));
-    } catch (error) {
-      console.error("Feil under henting av data fra Google Sheets:", error);
-    }
-  };
-
-  if (totalPanels > 0) {
-    console.log("🔍 Henter årlig kostnad for antall paneler:", totalPanels);
-    fetchGoogleSheetsData();
-  } else {
-    console.warn("⚠️ Ingen paneler valgt. Årlig kostnad kan ikke beregnes.");
-  }
-  
-}, [totalPanels]);
+    // Cleanup: Fjern tidligere timeout hvis `totalPanels` oppdateres før 500ms
+    return () => clearTimeout(debounceTimeout);
+  }, [totalPanels]);
 
   const evaluateDirection = (direction) => {
     const normalizedDirection = direction % 360;
@@ -279,7 +282,7 @@ useEffect(() => {
     } else {
       setVisibleRoofs((prev) => prev.filter((id) => id !== roofId));
     }
-    
+
     setAdjustedPanelCounts((prev) => ({
       ...prev,
       [roofId]: isCheckedNow
@@ -314,9 +317,9 @@ useEffect(() => {
       return matches[0];
     }
   };
-  
+
   const [desiredKWh, setDesiredKWh] = useState(0); // State for strømforbruk
-  const [coveragePercentage, setCoveragePercentage] = useState(0); // State for prosent
+  const [coveragePercentage, setCoveragePercentage] = useState(40); // State for prosent
   const [errors, setErrors] = useState({ kWh: "", percentage: "" }); // State for feil
   const [roofDetails, setRoofDetails] = useState({});
   const [activeTooltip, setActiveTooltip] = useState(null);
@@ -334,13 +337,12 @@ useEffect(() => {
     const rawValue = e.target.value.replace(/\s/g, "");
     const numericValue = Number(rawValue);
     if (!isNaN(numericValue)) {
-  
       if (numericValue < 1) {
-        setCoveragePercentage(1); 
+        setCoveragePercentage(1);
       } else if (numericValue > 100) {
-        setCoveragePercentage(100); 
+        setCoveragePercentage(100);
       } else {
-        setCoveragePercentage(numericValue); 
+        setCoveragePercentage(numericValue);
       }
     }
   };
@@ -361,117 +363,126 @@ useEffect(() => {
       document.removeEventListener("click", handleOutsideClick);
     };
   }, []);
-  
 
   const handleCalculatePanels = (adjustedKWh = null) => {
     const newErrors = { kWh: "", percentage: "", calculation: "" };
-  
+
     // Use adjustedKWh if provided, otherwise use desiredKWh
     const effectiveKWh = adjustedKWh ?? desiredKWh;
-  
+
     console.log("Starting calculation...");
     console.log("Effective KWh:", effectiveKWh);
     console.log("Coverage Percentage:", coveragePercentage);
-  
+
     if (!effectiveKWh || effectiveKWh <= 0 || isNaN(effectiveKWh)) {
       newErrors.kWh = "Skriv inn ønsket årlig strømforbruk (kWh).";
     }
-    if (!coveragePercentage || coveragePercentage < 1 || coveragePercentage > 100 || isNaN(coveragePercentage)) {
+    if (
+      !coveragePercentage ||
+      coveragePercentage < 1 ||
+      coveragePercentage > 100 ||
+      isNaN(coveragePercentage)
+    ) {
       newErrors.percentage = "Dekningsprosent må være et tall mellom 1 og 100.";
-    }    
-  
+    }
+
     console.log("Validation Errors:", newErrors);
-  
+
     setErrors(newErrors);
     if (newErrors.kWh || newErrors.percentage) return;
-  
+
     const energyRequirement = (effectiveKWh * coveragePercentage) / 100;
-  
+
     console.log("Energy Requirement (kWh):", energyRequirement);
-  
+
     const maxCoverage = combinedData.reduce((sum, roof) => {
       return sum + (roof.efficiencyPerPanel || 0) * roof.panels.panelCount;
     }, 0);
-  
+
     console.log("Max Coverage (kWh):", maxCoverage);
-  
+
     if (energyRequirement > maxCoverage) {
-      const adjustedKWhValue = Math.floor((maxCoverage / coveragePercentage) * 100);
-    
+      const adjustedKWhValue = Math.floor(
+        (maxCoverage / coveragePercentage) * 100
+      );
+
       // Set the error message
       setErrors((prev) => ({
         ...prev,
-        calculation: `Maksimal dekning er ${adjustedKWhValue.toLocaleString("nb-NO")} kWh.`,
+        calculation: `Maksimal dekning er ${adjustedKWhValue.toLocaleString(
+          "nb-NO"
+        )} kWh.`,
       }));
-    
+
       setDesiredKWh(adjustedKWhValue);
-    
+
       // Recalculate with adjusted KWh
       setTimeout(() => handleCalculatePanels(adjustedKWhValue), 0);
       return;
     }
-    
-    
-  
+
     let remainingEnergy = energyRequirement;
     const updatedPanelCounts = {};
     const updatedIsChecked = {};
     const updatedVisibleRoofs = [];
-  
+
     console.log("Starting roof sorting and panel allocation...");
-  
+
     const sortedRoofs = [...combinedData].sort(
       (a, b) => b.efficiencyPerPanel - a.efficiencyPerPanel
     );
-  
+
     for (const roof of sortedRoofs) {
       if (remainingEnergy <= 0) break;
-  
+
       const panelsNeeded = Math.min(
         Math.ceil(remainingEnergy / (roof.efficiencyPerPanel || 1)),
         roof.panels.panelCount
       );
-  
+
       if (panelsNeeded > 0) {
         updatedIsChecked[roof.id] = true;
         updatedPanelCounts[roof.id] = panelsNeeded;
         updatedVisibleRoofs.push(roof.id);
         remainingEnergy -= panelsNeeded * (roof.efficiencyPerPanel || 0);
-  
+
         console.log(`Allocating panels to roof ID ${roof.id}`);
         console.log("Panels Needed:", panelsNeeded);
         console.log("Remaining Energy (kWh):", remainingEnergy);
       }
     }
-  
+
     console.log("Final Panel Counts:", updatedPanelCounts);
     console.log("Visible Roofs:", updatedVisibleRoofs);
-  
+
     setAdjustedPanelCounts(updatedPanelCounts);
     setIsChecked(updatedIsChecked);
     setVisibleRoofs(updatedVisibleRoofs);
-  
+
     if (window.innerWidth < 768) {
-      document.getElementById("result-container")?.scrollIntoView({ behavior: "smooth" });
+      document
+        .getElementById("result-container")
+        ?.scrollIntoView({ behavior: "smooth" });
     }
-  
+
     console.log("Calculation complete.");
-  };  
-  
+  };
+
   useEffect(() => {
     const updatedCheckedRoofData = combinedData
       .filter((roof) => isChecked[roof.id])
       .map((roof) => ({
         roofId: roof.id,
-        adjustedPanelCount: adjustedPanelCounts[roof.id] || roof.panels.panelCount,
+        adjustedPanelCount:
+          adjustedPanelCounts[roof.id] || roof.panels.panelCount,
         maxPanels: roof.panels.panelCount,
         direction: roof.direction,
         angle: roof.angle,
       }));
-  
-    console.log("✅ Updated Checked Roof Data:", updatedCheckedRoofData);
+
+    //console.log("✅ Updated Checked Roof Data:", updatedCheckedRoofData);
     setCheckedRoofData(updatedCheckedRoofData);
-  
+
     setModalData({
       checkedRoofData: updatedCheckedRoofData,
       totalPanels,
@@ -493,8 +504,7 @@ useEffect(() => {
     yearlyProd,
     yearlyCost,
   ]);
-  
-  
+
   const routeBack = () => {
     router.push("/");
   };
@@ -509,325 +519,332 @@ useEffect(() => {
 
   return (
     <div className="w-screen h-screen">
-    <div className="flex flex-col md:flex-row w-full gap-2 pt-16 ">
-      {/* Top Section: Map */}
-      <div className="w-full relative">
-        <Suspense fallback={<div>Loading...</div>}>
-          <img
-            src="/colorGrading.png"
-            alt="Color Grading Overlay"
-            className="absolute z-20 w-20 right-3 top-12 rounded-md hidden md:block"
-          />
-          <MapComponent
-            lat={lat}
-            lng={lng}
-            combinedData={combinedData}
-            isChecked={isChecked}
-            toggleRoof={toggleRoof}
-            adjustedPanelCounts={adjustedPanelCounts}
-            apiKey={apiKey}
-          />
-        </Suspense>
-      </div>
-  
-      {/* Right Column: Address and Roof List */}
-      <div className="flex flex-col gap-8 p-4 w-full md:max-w-3xl">
-        {/* Address Section */}
-        <div className="flex flex-row justify-between">
-          <h1 className="text-xl">Adresse: {address}</h1>
-          <button
-            className="bg-black text-white rounded-full text-sm py-1.5 px-4"
-            onClick={routeBack}
-          >
-            Nytt søk
-          </button>
-        </div>
-  
-        {/* Roof List and Calculator */}
-        <div className="flex flex-col gap-6">
-          <SelectOption
-            title="Din taktype:"
-            options={[
-              "Takstein (Dobbelkrummet)",
-              "Takstein (Enkeltkrummet)",
-              "Glassert takstein",
-              "Flat takstein",
-              "Shingel/Takpapp",
-              "Trapes",
-              "Flatt tak",
-              "Integrert i taket",
-              "Decra",
-              "Bølgeblikk",
-            ]}
-            onSelect={handleRoofTypeChange}
-          />
-          <SelectOption
-            title="Paneltype:"
-            options={["Premium 440 W", "Max Power 455 W"]}
-            onSelect={handlePanelTypeChange}
-          />
-        </div>
-  
-        <p className="italic text-gray-600 pl-6">
-          Klikk på takene i kartet for å legge til eller ta bort.
-        </p>
-        <p className="text-sm text-center">
-          Takflater på eiendommen - Sortert fra mest til minst solinnstråling
-        </p>
-        {/* Roof List */}
-        {combinedData.length > 0 && (
-          <div className="flex flex-col gap-4 px-4">
-            <RoofList
-              roofs={combinedData}
-              visibleRoofs={visibleRoofs}
-              toggleRoof={toggleRoof}
-              evaluateDirection={evaluateDirection}
-              isChecked={isChecked}
-              adjustedPanelCounts={adjustedPanelCounts}
-              setAdjustedPanelCounts={setAdjustedPanelCounts}
+      <div className="flex flex-col md:flex-row w-full gap-2">
+        {/* Top Section: Map */}
+        <div className="w-full relative">
+          <Suspense fallback={<div>Loading...</div>}>
+            <img
+              src="/colorGrading.png"
+              alt="Color Grading Overlay"
+              className="absolute z-20 w-20 right-3 top-12 rounded-md hidden md:block"
             />
-            <div className="block lg:hidden mx-auto">
-              <PriceEstimator onSelect={handleSelectedElPrice} />
-            </div>
+            <MapComponent
+              lat={lat}
+              lng={lng}
+              combinedData={combinedData}
+              isChecked={isChecked}
+              toggleRoof={toggleRoof}
+              adjustedPanelCounts={adjustedPanelCounts}
+              apiKey={apiKey}
+            />
+          </Suspense>
+        </div>
+
+        {/* Right Column: Address and Roof List */}
+        <div className="flex flex-col gap-8 p-4 w-full md:max-w-3xl">
+          {/* Address Section */}
+          <div className="flex flex-row justify-between">
+            <h1 className="text-xl">Adresse: {address}</h1>
+            <button
+              className="bg-black text-white rounded-full text-sm py-1.5 px-4"
+              onClick={routeBack}
+            >
+              Nytt søk
+            </button>
           </div>
-        )}
-      </div>
-      </div>
-  
-    {/* Bottom Grid: Price Estimator, PanelMengde & Calculator */}
-    <div className="flex flex-col lg:flex-row max-w-[60rem] w-full gap-2 mx-auto">
-      {/* Column 1 */}
-      <div className="hidden md:block flex flex-col space-y-4">
-        <PriceEstimator onSelect={handleSelectedElPrice} />
-        <PanelMengde
-          selectedPanelType={selectedPanelType}
-          totalPanels={totalPanels}
-        />
+
+          {/* Roof List and Calculator */}
+          <div className="flex flex-col gap-6">
+            <SelectOption
+              title="Din taktype:"
+              options={[
+                "Takstein (Dobbelkrummet)",
+                "Takstein (Enkeltkrummet)",
+                "Glassert takstein",
+                "Flat takstein",
+                "Shingel/Takpapp",
+                "Trapes",
+                "Flatt tak",
+                "Integrert i taket",
+                "Decra",
+                "Bølgeblikk",
+              ]}
+              onSelect={handleRoofTypeChange}
+            />
+            <SelectOption
+              title="Paneltype:"
+              options={["Premium 440 W", "Max Power 455 W"]}
+              onSelect={handlePanelTypeChange}
+            />
+          </div>
+
+          <p className="italic text-gray-600">
+            Klikk på takene i kartet for å legge til eller ta bort.
+          </p>
+          <p className="text-sm text-center">
+            Takflater på eiendommen - Sortert fra mest til minst solinnstråling
+          </p>
+          {/* Roof List */}
+          {combinedData.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <RoofList
+                roofs={combinedData}
+                visibleRoofs={visibleRoofs}
+                toggleRoof={toggleRoof}
+                evaluateDirection={evaluateDirection}
+                isChecked={isChecked}
+                adjustedPanelCounts={adjustedPanelCounts}
+                setAdjustedPanelCounts={setAdjustedPanelCounts}
+              />
+              <div className="block md:hidden max-w-[32rem] mx-auto w-full">
+                <PriceEstimator onSelect={handleSelectedElPrice} />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Column 2: Calculator */}
-      <div className="calculator-container space-y-4">
-      <h2>Finn ut hvor mange solcellepaneler du trenger</h2>
-      <p>Skriv inn ditt årlige strømforbruk i kWh (for eksempel: *25 000*):</p>
-      <div className="input-section">
-        <div className="input-with-tooltip relative">
-          <span
-            className="tooltip-icon cursor-pointer"
-            onClick={() => toggleTooltip("kwh")}
-          >
-            i
-          </span>
-          {activeTooltip === "kwh" && (
-            <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
-              Usikker på hvor mye strøm du bruker? En gjennomsnittlig leilighet
-              bruker 8 000 - 12 000 kwh per år, mens en enebolig bruker 20 000 - 30 000 kwh. Sjekk din siste strømregning eller kontakt strømleverandøren din for eksakt forbruk.
-            </div>
-          )}
-          <input
-            id="kwh-input"
-            type="text"
-            value={desiredKWh.toLocaleString("nb-NO")}
-            onChange={handleKWhChange}
-            placeholder="27 500"
+      {/* Bottom Grid: Price Estimator, PanelMengde & Calculator */}
+      <div className="flex flex-col lg:flex-row md:max-w-[32rem] lg:max-w-[60rem] gap-8 mx-auto mt-8 px-4">
+        {/* Column 1 */}
+        <div className="hidden md:flex flex-col space-y-8 w-full">
+          <PriceEstimator onSelect={handleSelectedElPrice} />
+          <PanelMengde
+            selectedPanelType={selectedPanelType}
+            totalPanels={totalPanels}
           />
-          <span className="unit">kWh</span>
         </div>
-        {errors.kWh && <span className="error-message">{errors.kWh}</span>}
-      </div>
-      <p>
-        Basert på et forbruk på{' '}
-        <em>
-          {desiredKWh ? desiredKWh.toLocaleString('nb-NO') : '27 500'}
-        </em> kWh, anbefaler vi egen produksjon på{' '}
-        <strong>
-          <span className="ml-1">
-            {(desiredKWh * coveragePercentage / 100 || 11000).toLocaleString('nb-NO')}{' '}
-            kWh
-          </span>
-        </strong>.
-      </p>
-      <p>Dette vil dekke ditt årlige strømbehov med:</p>
-      <div className="input-section">
-        <div className="input-with-tooltip relative">
-          <span
-            className="tooltip-icon cursor-pointer"
-            onClick={() => toggleTooltip("percentage")}
-          >
-            i
-          </span>
-          {activeTooltip === "percentage" && (
-            <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
-              Årlig strømforbruk burde dekke 30-60 % en av forbruket for private
-              husholdninger, avhengig av ønsket balanse mellom investering og lønnsomhet. For næringsbygg anbefales ofte en dekning på 80 % eller mer, spesielt dersom strømforbruket er høyt og stabilt. Du kan justere dette feltet for å tilpasse beregningen til ditt behov.
+
+        {/* Column 2: Calculator */}
+        <div className="calculator-container space-y-4 my-4 md:max-w-[32rem]">
+          <h2>Finn ut hvor mange solcellepaneler du trenger</h2>
+          <p>
+            Skriv inn ditt årlige strømforbruk i kWh (for eksempel: *25 000*):
+          </p>
+          <div className="input-section">
+            <div className="input-with-tooltip relative">
+              <span
+                className="tooltip-icon cursor-pointer"
+                onClick={() => toggleTooltip("kwh")}
+              >
+                i
+              </span>
+              {activeTooltip === "kwh" && (
+                <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
+                  Usikker på hvor mye strøm du bruker? En gjennomsnittlig
+                  leilighet bruker 8 000 - 12 000 kwh per år, mens en enebolig
+                  bruker 20 000 - 30 000 kwh. Sjekk din siste strømregning eller
+                  kontakt strømleverandøren din for eksakt forbruk.
+                </div>
+              )}
+              <input
+                id="kwh-input"
+                type="text"
+                value={desiredKWh.toLocaleString("nb-NO")}
+                onChange={handleKWhChange}
+                placeholder="27 500"
+              />
+              <span className="unit">kWh</span>
             </div>
-          )}
-          <input
-            id="percent-input"
-            type="text"
-            value={coveragePercentage.toLocaleString("nb-NO")}
-            onChange={handlePercentageChange}
-            placeholder="40"
-          />
-          <span className="unit">%</span>
-        </div>
-        {errors.percentage && (
-          <span className="error-message">{errors.percentage}</span>
-        )}
-      </div>
-      <p>
-        Trykk på knappen for å beregne antall solcellepaneler du trenger for å oppnå
-        <strong>
-          <span className="ml-1">
-            {(desiredKWh * coveragePercentage / 100 || 11000).toLocaleString(
-              "nb-NO"
+            {errors.kWh && <span className="error-message">{errors.kWh}</span>}
+          </div>
+          <p>
+            Basert på et forbruk på{" "}
+            <em>
+              {desiredKWh ? desiredKWh.toLocaleString("nb-NO") : "27 500"}
+            </em>{" "}
+            kWh, anbefaler vi egen produksjon på{" "}
+            <strong>
+              <span className="ml-1">
+                {(
+                  (desiredKWh * coveragePercentage) / 100 || 11000
+                ).toLocaleString("nb-NO")}{" "}
+                kWh
+              </span>
+            </strong>
+            .
+          </p>
+          <p>Dette vil dekke ditt årlige strømbehov med:</p>
+          <div className="input-section">
+            <div className="input-with-tooltip relative">
+              <span
+                className="tooltip-icon cursor-pointer"
+                onClick={() => toggleTooltip("percentage")}
+              >
+                i
+              </span>
+              {activeTooltip === "percentage" && (
+                <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
+                  Årlig strømforbruk burde dekke 30-60 % en av forbruket for
+                  private husholdninger, avhengig av ønsket balanse mellom
+                  investering og lønnsomhet. For næringsbygg anbefales ofte en
+                  dekning på 80 % eller mer, spesielt dersom strømforbruket er
+                  høyt og stabilt. Du kan justere dette feltet for å tilpasse
+                  beregningen til ditt behov.
+                </div>
+              )}
+              <input
+                id="percent-input"
+                type="text"
+                value={coveragePercentage.toLocaleString("nb-NO")}
+                onChange={handlePercentageChange}
+                placeholder="40"
+              />
+              <span className="unit">%</span>
+            </div>
+            {errors.percentage && (
+              <span className="error-message">{errors.percentage}</span>
             )}
-            kWh
-          </span>
-        </strong>.
-      </p>
-      <div className="flex items-center justify-between">
-  <button
-    id="calculate-button"
-    className="calculate-button"
-    onClick={() => handleCalculatePanels()}
-  >
-    Beregn paneler
-  </button>
-  {errors.calculation && (
-    <span className="ml-4 text-red-500 text-sm whitespace-nowrap">
-      {errors.calculation}
-    </span>
-  )}
-</div>
+          </div>
+          <p>
+            Trykk på knappen for å beregne antall solcellepaneler du trenger for
+            å oppnå
+            <strong>
+              <span className="ml-1">
+                {(
+                  (desiredKWh * coveragePercentage) / 100 || 11000
+                ).toLocaleString("nb-NO")}
+                kWh
+              </span>
+            </strong>
+            .
+          </p>
+          <div className="flex items-center justify-between">
+            <button
+              id="calculate-button"
+              className="calculate-button"
+              onClick={() => handleCalculatePanels()}
+            >
+              Beregn paneler
+            </button>
+            {errors.calculation && (
+              <span className="ml-4 text-red-500 text-sm whitespace-nowrap">
+                {errors.calculation}
+              </span>
+            )}
+          </div>
+        </div>
 
+        {/* End of calculator */}
+        <div className="block md:hidden max-w-[32rem] mx-auto">
+          <PanelMengde
+            selectedPanelType={selectedPanelType}
+            totalPanels={totalPanels}
+          />
+        </div>
       </div>
-   
-       {/* End of calculator */}
-       <div className="block lg:hidden">
-       <PanelMengde
-          selectedPanelType={selectedPanelType}
-          totalPanels={totalPanels}
-        />
-      </div>
-    </div>
-        
-  <div className="md:col-span-2 flex flex-col items-center gap-6 mt-10 px-4">
-  <ul className="flex flex-col gap-4">
-    <li className="flex flex-col justify-between font-light relative gap-2">
-      <InfoModal
-        isOpen={openModal === "modal1"}
-        onClose={handleCloseModal}
-        content="Estimert produksjon i kWh er basert på data fra PVGIS, som bruker værdata fra perioden 2005–2020. Ønsker du et mer nøyaktig estimat på din produksjon? Be om et helt uforpliktende tilbud fra oss. Med et varmere klima og mer sol i Norge de siste årene, kan du også forvente enda høyere produksjon enn det historiske data viser."
-      />
-      <div className="flex flex-row gap-2">
-        <Image
-          onClick={() => handleOpenModal("modal1")}
-          src="/info.svg"
-          width={20}
-          height={20}
-          alt="info"
-        />
-        <p>Din forventet årlig strømproduksjon (kWh): </p>
-      </div>
-      <p className="text-xl ml-12 font-medium">
-        = {""}
-        {new Intl.NumberFormat("nb-NO").format(
-          (yearlyProd * 0.95).toFixed(0)
-        )} {" "}
-        - {" "}
-        {new Intl.NumberFormat("nb-NO").format(
-          (yearlyProd * 1.05).toFixed(0)
-        )} {" "}
-        kWh
-      </p>
-      {/* Divider */}
-<div className="divider"></div>
 
-    </li>
-    <li className="flex flex-col justify-between font-light relative gap-2">
-      <InfoModal
-        isOpen={openModal === "modal2"}
-        onClose={handleCloseModal}
-        content="Denne beregningen viser en estimert inntekt solcelleanlegget kan gi deg ved å redusere strømregningen. Bruk skyveknappen i boksen «Din estimerte gjennomsnittlige strømpris» for å justere og se hva du kan spare. Beregningen er basert på produksjon i kWh multiplisert med en estimert strømpris. Ønsker du et mer presist anslag? Be om et tilbud, så gir vi deg en tilpasset beregning av kWh-produksjonen for ditt hjem."
-      />
-      <div className="flex flex-row gap-2">
-        <Image
-          onClick={() => handleOpenModal("modal2")}
-          src="/info.svg"
-          width={20}
-          height={20}
-          alt="info"
-        />
-        <p>Din forventet årlig besparelse/inntekt: </p>
+      <div className="md:col-span-2 flex flex-col items-center gap-6 mt-10 px-4">
+        <ul className="flex flex-col gap-4">
+          <li className="flex flex-col justify-between font-light relative gap-2">
+            <InfoModal
+              isOpen={openModal === "modal1"}
+              onClose={handleCloseModal}
+              content="Estimert produksjon i kWh er basert på data fra PVGIS, som bruker værdata fra perioden 2005–2020. Ønsker du et mer nøyaktig estimat på din produksjon? Be om et helt uforpliktende tilbud fra oss. Med et varmere klima og mer sol i Norge de siste årene, kan du også forvente enda høyere produksjon enn det historiske data viser."
+            />
+            <div className="flex flex-row gap-2">
+              <Image
+                onClick={() => handleOpenModal("modal1")}
+                src="/info.svg"
+                width={20}
+                height={20}
+                alt="info"
+              />
+              <p>Din forventet årlig strømproduksjon (kWh): </p>
+            </div>
+            <p className="text-xl ml-12 font-medium">
+              = {""}
+              {new Intl.NumberFormat("nb-NO").format(
+                (yearlyProd * 0.95).toFixed(0)
+              )}{" "}
+              -{" "}
+              {new Intl.NumberFormat("nb-NO").format(
+                (yearlyProd * 1.05).toFixed(0)
+              )}{" "}
+              kWh
+            </p>
+            {/* Divider */}
+            <div className="divider"></div>
+          </li>
+          <li className="flex flex-col justify-between font-light relative gap-2">
+            <InfoModal
+              isOpen={openModal === "modal2"}
+              onClose={handleCloseModal}
+              content="Denne beregningen viser en estimert inntekt solcelleanlegget kan gi deg ved å redusere strømregningen. Bruk skyveknappen i boksen «Din estimerte gjennomsnittlige strømpris» for å justere og se hva du kan spare. Beregningen er basert på produksjon i kWh multiplisert med en estimert strømpris. Ønsker du et mer presist anslag? Be om et tilbud, så gir vi deg en tilpasset beregning av kWh-produksjonen for ditt hjem."
+            />
+            <div className="flex flex-row gap-2">
+              <Image
+                onClick={() => handleOpenModal("modal2")}
+                src="/info.svg"
+                width={20}
+                height={20}
+                alt="info"
+              />
+              <p>Din forventet årlig besparelse/inntekt: </p>
+            </div>
+            <p className="text-xl ml-12 font-medium">
+              = {""}
+              {new Intl.NumberFormat("nb-NO").format(
+                potentialSaving.toFixed(0)
+              )}{" "}
+              Kr
+            </p>
+            {/* Divider */}
+            <div className="divider"></div>
+          </li>
+          <li className="flex flex-col justify-between font-light relative gap-2">
+            <InfoModal
+              isOpen={openModal === "modal3"}
+              onClose={handleCloseModal}
+              content="Denne beregningen viser hva solcelleanlegget vil koste deg per år over 30 år. Laveste sum gjelder direktekjøp, mens høyeste anslår kostnaden med miljølån. Be om et tilbud for konkrete tall på både direktekjøp og månedlige kostnader med finansiering."
+            />
+            <div className="flex flex-row gap-2">
+              <Image
+                onClick={() => handleOpenModal("modal3")}
+                src="/info.svg"
+                width={20}
+                height={20}
+                alt="info"
+              />
+              <p>Din forventet kostnad per år: </p>
+            </div>
+            <p className="text-xl ml-12 font-medium">
+              = {""}
+              {new Intl.NumberFormat("nb-NO").format(yearlyCost.toFixed(0))} Kr
+            </p>
+            {/* Divider */}
+            <div className="divider"></div>
+          </li>
+        </ul>
+        <button
+          className="bg-red-500 self-center w-48 py-1 rounded-md text-sm funky mb-4"
+          onClick={toggleModal} // Open the modal
+          disabled={isLoading || totalPanels < minPanels}
+        >
+          Jeg ønsker uforpliktende tilbud
+        </button>
       </div>
-      <p className="text-xl ml-12 font-medium">
-        = {""}
-        {new Intl.NumberFormat("nb-NO").format(
-          potentialSaving.toFixed(0)
-        )} {" "}
-        Kr
-      </p>
-      {/* Divider */}
-<div className="divider"></div>
-
-    </li>
-    <li className="flex flex-col justify-between font-light relative gap-2">
-      <InfoModal
-        isOpen={openModal === "modal3"}
-        onClose={handleCloseModal}
-        content="Denne beregningen viser hva solcelleanlegget vil koste deg per år over 30 år. Laveste sum gjelder direktekjøp, mens høyeste anslår kostnaden med miljølån. Be om et tilbud for konkrete tall på både direktekjøp og månedlige kostnader med finansiering."
-      />
-      <div className="flex flex-row gap-2">
-        <Image
-          onClick={() => handleOpenModal("modal3")}
-          src="/info.svg"
-          width={20}
-          height={20}
-          alt="info"
-        />
-        <p>Din forventet kostnad per år: </p>
-      </div>
-      <p className="text-xl ml-12 font-medium">
-        = {""}
-        {new Intl.NumberFormat("nb-NO").format(
-          yearlyCost.toFixed(0)
-        )} {" "}
-        Kr
-      </p>
-      {/* Divider */}
-<div className="divider"></div>
-
-    </li>
-  </ul>
-  <button
-    className="bg-red-500 self-center w-48 py-1 rounded-md text-sm funky mb-4"
-    onClick={toggleModal} // Open the modal
-    disabled={isLoading || totalPanels < minPanels}
-  >
-    Jeg ønsker uforpliktende tilbud
-  </button>
-</div>
 
       {/* End of info */}
       {showModal && (
-    <>
-      <div className="overlay"></div>
-      <SendModal
-        onClose={handleCloseModal}
-        checkedRoofData={checkedRoofData}
-        totalPanels={totalPanels}
-        selectedElPrice={selectedElPrice}
-        selectedRoofType={selectedRoofType}
-        selectedPanelType={selectedPanelType}
-        yearlyProd={yearlyProd}
-        yearlyCost={yearlyCost}
-        address={address}
-        toggleModal={toggleModal}
-        site={site}
-        />
+        <>
+          <div className="overlay"></div>
+          <SendModal
+            onClose={handleCloseModal}
+            checkedRoofData={checkedRoofData}
+            totalPanels={totalPanels}
+            selectedElPrice={selectedElPrice}
+            selectedRoofType={selectedRoofType}
+            selectedPanelType={selectedPanelType}
+            yearlyProd={yearlyProd}
+            yearlyCost={yearlyCost}
+            address={address}
+            toggleModal={toggleModal}
+            site={site}
+          />
         </>
-        )}
-  {/* Map */}
- </div>
+      )}
+      {/* Map */}
+    </div>
   );
 }

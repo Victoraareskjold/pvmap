@@ -15,7 +15,7 @@ export default function PriceEstimator({ onSelect }) {
 
   return (
     <div
-      className="bg-white rounded-3xl p-2 m-9 mx-auto max-w-lg gap-2 flex flex-col border-2 h-[250px]"
+      className="bg-white rounded-3xl p-2 px-8 mx-auto gap-2 flex flex-col border-2 w-full"
       style={{ borderColor: "#FF9D00" }}
     >
       <h1 className="text-center text-lg mb-1">
@@ -57,6 +57,3 @@ export default function PriceEstimator({ onSelect }) {
     </div>
   );
 }
-
-
-
