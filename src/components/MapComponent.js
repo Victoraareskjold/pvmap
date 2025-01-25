@@ -143,7 +143,7 @@ const MapComponent = ({
     return "#00BBFF"; // Dårlig
   }
 
-  return <div id="map" className="map z-10 w-full h-2/5 lg:h-full"></div>;
+  return <div id="map" className="map z-10 w-full h-full"></div>;
 };
 
 export default MapComponent;

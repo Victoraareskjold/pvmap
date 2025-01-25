@@ -46,7 +46,7 @@ function RoofList({
         return (
           <li
             key={roof.id}
-            className="flex flex-col gap-4 py-4 border-b border-gray-300"
+            className="flex flex-col gap-4 py-4 border-b border-gray-300 px-4"
           >
             {/* Hovedoverskrift for takflate */}
             <div className="flex flex-row gap-4 cursor-pointer">

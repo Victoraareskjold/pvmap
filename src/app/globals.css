@@ -5,6 +5,8 @@
 html,
 body {
   height: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 .grid-container {
   display: grid;
