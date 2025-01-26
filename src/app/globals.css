@@ -4,9 +4,9 @@
 
 html,
 body {
-  height: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+  height: fit-content;
 }
 .grid-container {
   display: grid;
