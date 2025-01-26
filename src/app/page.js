@@ -13,7 +13,7 @@ export default function Home() {
     >
       <div className="flex flex-col lg:flex-row lg:items-center w-full h-full max-w-[120rem] self-center">
         {/* Tekstdelen */}
-        <div className="flex flex-col justify-center items-start px-4 md:px-12 gap-8 h-1/2 lg:w-1/2">
+        <div className="flex flex-col justify-center items-start px-4 md:px-12 gap-2 pt-4 lg:pt-0 lg:gap-8 h-1/2 lg:w-1/2">
           <h1 className="text-white text-3xl md:text-6xl">
             Utforsk mulighetene – Finn ut om solenergi passer for deg.
           </h1>
