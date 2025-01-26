@@ -11,7 +11,7 @@ export default function Home() {
       className="flex flex-col w-screen h-screen"
       style={{ backgroundColor: "#6697CA" }}
     >
-      <div className="flex flex-col lg:flex-row lg:items-center w-full h-full">
+      <div className="flex flex-col lg:flex-row lg:items-center w-full h-full max-w-[120rem] self-center">
         {/* Tekstdelen */}
         <div className="flex flex-col justify-center items-start px-4 md:px-12 gap-8 h-1/2 lg:w-1/2">
           <h1 className="text-white text-3xl md:text-6xl">

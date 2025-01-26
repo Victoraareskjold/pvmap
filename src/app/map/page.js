@@ -1,6 +1,6 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 import SelectOption from "../../components/SelectOption";
 
@@ -26,6 +26,7 @@ export default function Map() {
   const addressId = searchParams.get("addressId");
   const site = searchParams.get("site");
   const router = useRouter();
+  const pricesRef = useRef(null);
 
   const [selectedRoofType, setSelectedRoofType] = useState(
     "Takstein (Dobbelkrummet)"
@@ -460,9 +461,7 @@ export default function Map() {
     setVisibleRoofs(updatedVisibleRoofs);
 
     if (window.innerWidth < 768) {
-      document
-        .getElementById("result-container")
-        ?.scrollIntoView({ behavior: "smooth" });
+      pricesRef.current.scrollIntoView({ behavior: "smooth" });
     }
 
     console.log("Calculation complete.");
@@ -578,10 +577,10 @@ export default function Map() {
             />
           </div>
 
-          <p className="italic text-gray-600">
-            Klikk på takene i kartet for å legge til eller ta bort.
+          <p className="italic text-gray-600 text-lg">
+            Klikk på takflatene ovenfor i kartet for å legge til eller ta bort
           </p>
-          <p className="text-sm text-center">
+          <p className="text-lg text-center">
             Takflater på eiendommen - Sortert fra mest til minst solinnstråling
           </p>
           {/* Roof List */}
@@ -734,7 +733,10 @@ export default function Map() {
         </div>
       </div>
 
-      <div className="md:col-span-2 flex flex-col items-center gap-6 mt-10 px-4">
+      <div
+        className="md:col-span-2 flex flex-col items-center gap-6 mt-10 px-4"
+        ref={pricesRef}
+      >
         <ul className="flex flex-col gap-4">
           <li className="flex flex-col justify-between font-light relative gap-2">
             <InfoModal
@@ -780,7 +782,9 @@ export default function Map() {
                 height={20}
                 alt="info"
               />
-              <p>Din forventet årlig besparelse/inntekt: </p>
+              <p>
+                Din forventet årlig besparelse/inntekt fra solcelleanlegget:{" "}
+              </p>
             </div>
             <p className="text-xl ml-12 font-medium">
               = {""}
@@ -806,7 +810,9 @@ export default function Map() {
                 height={20}
                 alt="info"
               />
-              <p>Din forventet kostnad per år: </p>
+              <p>
+                Årlig gjennomsnittskostnad for solcelleanlegget over 30 år:{" "}
+              </p>
             </div>
             <p className="text-xl ml-12 font-medium">
               = {""}

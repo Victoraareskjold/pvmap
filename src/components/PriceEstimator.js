@@ -24,12 +24,12 @@ export default function PriceEstimator({ onSelect }) {
 
       <div className="flex flex-row gap-1 mb-1 items-center">
         <img src="/wave.png" className="w-4 h-4" />
-        <p className="text-center text-orange-500 text-xs">
+        <p className="text-center text-orange-500 text-md">
           Det handler ikke bare om kWh-pris – solceller kutter også nettleien.
         </p>
       </div>
 
-      <p className="text-center text-xs mb-1">
+      <p className="text-center text-md mb-1">
         Dra slideren og estimer gjennomsnittlig (kWh + nettleiepris).
       </p>
 
@@ -50,7 +50,7 @@ export default function PriceEstimator({ onSelect }) {
         <p className="text-xs">6 Kr</p>
       </div>
 
-      <p className="italic text-center text-xs mt-2">
+      <p className="italic text-center text-md mt-2">
         Din anslåtte gjennomsnittlige strømpris:{" "}
         <span className="text-red-500">{elPrice}</span> kWh.
       </p>

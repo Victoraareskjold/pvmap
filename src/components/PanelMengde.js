@@ -12,7 +12,7 @@ export default function PanelMengde({ selectedPanelType, totalPanels }) {
           {totalPanels} paneler
         </div>
       </div>
-      <p className="text-xs sm:text-sm text-[#666]">
+      <p className="text-md sm:text-md text-[#666]">
         Premiumpaneler gir en optimal kombinasjon av høy ytelse, stilrent design
         og konkurransedyktig pris. De har lavere overflatetemperatur og bedre
         innebygd shading, noe som reduserer tap ved hindringer som fugleskitt
