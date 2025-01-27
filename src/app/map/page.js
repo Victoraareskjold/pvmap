@@ -225,7 +225,12 @@ export default function Map() {
         const response = await fetch("/api/googleSheets", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ totalPanels }),
+          body: JSON.stringify({
+            totalPanels,
+            selectedRoofType,
+            selectedPanelType,
+            site,
+          }),
         });
 
         if (!response.ok) {
@@ -255,7 +260,7 @@ export default function Map() {
 
     // Cleanup: Fjern tidligere timeout hvis `totalPanels` oppdateres før 500ms
     return () => clearTimeout(debounceTimeout);
-  }, [totalPanels]);
+  }, [totalPanels, selectedRoofType, selectedPanelType, site]);
 
   const evaluateDirection = (direction) => {
     const normalizedDirection = direction % 360;

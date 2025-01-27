@@ -80,40 +80,50 @@ export default function SendModal({
   };
 
   return (
-    <div className="flex flex-col gap-4 bg-white rounded-xl modal z-50 p-4 w-full max-w-md fixed">
+    <div className="flex flex-col gap-3 bg-white rounded-xl modal z-50 p-4 w-full max-w-md fixed">
       <button
-        className="self-end text-orange-500 font-bold text-sm"
+        className="absolute top-4 right-4 text-red-500 text-xl"
         onClick={toggleModal}
       >
-        Lukk
+        ×
       </button>
-      <p className="text-md">
+      <p className="text-md w-5/6">
         Informasjonen du har fylt ut i solkartet, sendes automatisk til oss.
         Mangler noe, går det fint – vi lager et forslag som passer best for deg.
         Fyll ut resten nedenfor for et uforpliktende tilbud.
       </p>
-      <label className="block text-sm font-medium">Fullt navn*</label>
-      <input
-        className="w-full border rounded-md px-3 py-2 bg-zinc-200"
-        placeholder="Fornavn Etternavn"
-        value={name}
-        onChange={handleNameChange}
-      />
-      <label className="block text-sm font-medium">Telefon*</label>
-      <input
-        className="w-full border rounded-md px-3 py-2 bg-zinc-200"
-        placeholder="Telefonnummer"
-        value={phone}
-        onChange={handlePhoneChange}
-      />
-      <label className="block text-sm font-medium">E-post*</label>
-      <input
-        className="w-full border rounded-md px-3 py-2 bg-zinc-200"
-        type="email"
-        placeholder="Din E-postaddresse"
-        value={email}
-        onChange={handleEmailChange}
-      />
+
+      <div>
+        <label className="block text-sm font-medium">Fullt navn*</label>
+        <input
+          className="w-full border rounded-md px-3 py-2 bg-zinc-200"
+          placeholder="Fornavn Etternavn"
+          value={name}
+          onChange={handleNameChange}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium">Telefon*</label>
+        <input
+          className="w-full border rounded-md px-3 py-2 bg-zinc-200"
+          placeholder="Telefonnummer"
+          value={phone}
+          onChange={handlePhoneChange}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium">E-post*</label>
+        <input
+          className="w-full border rounded-md px-3 py-2 bg-zinc-200"
+          type="email"
+          placeholder="Din E-postaddresse"
+          value={email}
+          onChange={handleEmailChange}
+        />
+      </div>
+
       <div className="flex flex-row gap-2">
         <input type="checkbox" value={checked} onChange={handleCheckChange} />
         <p>
@@ -122,7 +132,7 @@ export default function SendModal({
         </p>
       </div>
       <button
-        className="bg-red-500 self-center !w-full py-1 rounded-md text-sm funky mb-4 !mt-0"
+        className="bg-red-500 self-center !w-full py-1 rounded-md text-sm funky !mt-0"
         onClick={handleSend}
         disabled={loading}
       >

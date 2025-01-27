@@ -3,9 +3,11 @@ import { google } from "googleapis";
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { totalPanels } = body;
+    const { totalPanels, selectedRoofType, selectedPanelType, site } = body;
 
-    console.log(totalPanels);
+    const sheetName = site == null ? site : "vestelektro";
+
+    console.log(sheetName);
 
     if (totalPanels < 0) {
       return new Response(
@@ -29,17 +31,35 @@ export async function POST(req) {
     // Sett totalPanels i celle A2
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: "A2", // Dette er cellen du vil oppdatere
+      range: `${sheetName}!A2`, // Dette er cellen du vil oppdatere
       valueInputOption: "RAW", // RAW lar deg bruke uformaterte verdier
       requestBody: {
         values: [[totalPanels]], // Sett totalPanels i A2
       },
     });
 
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${sheetName}!C2`, // Oppdater celle C2 (rullegardinverdien)
+      valueInputOption: "RAW",
+      requestBody: {
+        values: [[selectedRoofType]],
+      },
+    });
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${sheetName}!D2`, // Oppdater celle C2 (rullegardinverdien)
+      valueInputOption: "RAW",
+      requestBody: {
+        values: [[selectedPanelType]],
+      },
+    });
+
     // Hent verdien fra celle B2
     const responseB2 = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "B2", // Dette er cellen vi henter fra
+      range: `${sheetName}!B2`, // Dette er cellen vi henter fra
     });
 
     const valueFromB2 = responseB2.data.values
