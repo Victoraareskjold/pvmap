@@ -31,7 +31,7 @@ export default function Map() {
   const [selectedRoofType, setSelectedRoofType] = useState(
     "Takstein (Dobbelkrummet)"
   );
-  const [selectedPanelType, setSelectedPanelType] = useState("Premium - 440 W");
+  const [selectedPanelType, setSelectedPanelType] = useState("Premium 440 W");
   const [selectedElPrice, setSelectedElPrice] = useState(1.5);
 
   const [combinedData, setCombinedData] = useState([]);
