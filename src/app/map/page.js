@@ -5,9 +5,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import SelectOption from "../../components/SelectOption";
 
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import InfoModal from "../../components/InfoModal";
 import PanelMengde from "../../components/PanelMengde";
 import PriceEstimator from "../../components/PriceEstimator";
 import RoofList from "../../components/RoofList";
@@ -744,22 +742,28 @@ export default function Map() {
       >
         <ul className="flex flex-col gap-4">
           <li className="flex flex-col justify-between font-light relative gap-2">
-            <InfoModal
-              isOpen={openModal === "modal1"}
-              onClose={handleCloseModal}
-              content="Estimert produksjon i kWh er basert på data fra PVGIS, som bruker værdata fra perioden 2005–2020. Ønsker du et mer nøyaktig estimat på din produksjon? Be om et helt uforpliktende tilbud fra oss. Med et varmere klima og mer sol i Norge de siste årene, kan du også forvente enda høyere produksjon enn det historiske data viser."
-            />
             <div className="flex flex-row gap-2">
-              <Image
-                onClick={() => handleOpenModal("modal1")}
-                src="/info.svg"
-                width={20}
-                height={20}
-                alt="info"
-              />
-              <p>Din forventet årlig strømproduksjon (kWh): </p>
+              <span
+                className="tooltip-icon cursor-pointer self-center"
+                onClick={() => toggleTooltip("1")}
+              >
+                i
+              </span>
+              {activeTooltip === "1" && (
+                <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
+                  Estimert produksjon i kWh er basert på data fra PVGIS, som
+                  bruker værdata fra perioden 2005–2020. Ønsker du et mer
+                  nøyaktig estimat på din produksjon? Be om et helt
+                  uforpliktende tilbud fra oss. Med et varmere klima og mer sol
+                  i Norge de siste årene, kan du også forvente enda høyere
+                  produksjon enn det historiske data viser.
+                </div>
+              )}
+              <p className="font-medium text-lg">
+                Din forventet årlig strømproduksjon (kWh):{" "}
+              </p>
             </div>
-            <p className="text-xl ml-12 font-medium">
+            <p className="text-2xl ml-12 font-bold">
               = {""}
               {new Intl.NumberFormat("nb-NO").format(
                 (yearlyProd * 0.95).toFixed(0)
@@ -774,24 +778,29 @@ export default function Map() {
             <div className="divider"></div>
           </li>
           <li className="flex flex-col justify-between font-light relative gap-2">
-            <InfoModal
-              isOpen={openModal === "modal2"}
-              onClose={handleCloseModal}
-              content="Denne beregningen viser en estimert inntekt solcelleanlegget kan gi deg ved å redusere strømregningen. Bruk skyveknappen i boksen «Din estimerte gjennomsnittlige strømpris» for å justere og se hva du kan spare. Beregningen er basert på produksjon i kWh multiplisert med en estimert strømpris. Ønsker du et mer presist anslag? Be om et tilbud, så gir vi deg en tilpasset beregning av kWh-produksjonen for ditt hjem."
-            />
             <div className="flex flex-row gap-2">
-              <Image
-                onClick={() => handleOpenModal("modal2")}
-                src="/info.svg"
-                width={20}
-                height={20}
-                alt="info"
-              />
-              <p>
+              <span
+                className="tooltip-icon cursor-pointer self-center"
+                onClick={() => toggleTooltip("2")}
+              >
+                i
+              </span>
+              {activeTooltip === "2" && (
+                <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
+                  Denne beregningen viser en estimert inntekt solcelleanlegget
+                  kan gi deg ved å redusere strømregningen. Bruk skyveknappen i
+                  boksen «Din estimerte gjennomsnittlige strømpris» for å
+                  justere og se hva du kan spare. Beregningen er basert på
+                  produksjon i kWh multiplisert med en estimert strømpris.
+                  Ønsker du et mer presist anslag? Be om et tilbud, så gir vi
+                  deg en tilpasset beregning av kWh-produksjonen for ditt hjem.
+                </div>
+              )}
+              <p className="font-medium text-lg">
                 Din forventet årlig besparelse/inntekt fra solcelleanlegget:{" "}
               </p>
             </div>
-            <p className="text-xl ml-12 font-medium">
+            <p className="text-2xl ml-12 font-bold">
               = {""}
               {new Intl.NumberFormat("nb-NO").format(
                 potentialSaving.toFixed(0)
@@ -802,24 +811,28 @@ export default function Map() {
             <div className="divider"></div>
           </li>
           <li className="flex flex-col justify-between font-light relative gap-2">
-            <InfoModal
-              isOpen={openModal === "modal3"}
-              onClose={handleCloseModal}
-              content="Denne beregningen viser hva solcelleanlegget vil koste deg per år over 30 år. Laveste sum gjelder direktekjøp, mens høyeste anslår kostnaden med miljølån. Be om et tilbud for konkrete tall på både direktekjøp og månedlige kostnader med finansiering."
-            />
             <div className="flex flex-row gap-2">
-              <Image
-                onClick={() => handleOpenModal("modal3")}
-                src="/info.svg"
-                width={20}
-                height={20}
-                alt="info"
-              />
-              <p>
+              <span
+                className="tooltip-icon cursor-pointer self-center"
+                onClick={() => toggleTooltip("3")}
+              >
+                i
+              </span>
+              {activeTooltip === "3" && (
+                <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
+                  Denne beregningen viser hva solcelleanlegget vil koste deg per
+                  år over 30 år. Laveste sum gjelder direktekjøp, mens høyeste
+                  anslår kostnaden med miljølån. Be om et tilbud for konkrete
+                  tall på både direktekjøp og månedlige kostnader med
+                  finansiering.
+                </div>
+              )}
+
+              <p className="font-medium text-lg">
                 Årlig gjennomsnittskostnad for solcelleanlegget over 30 år:{" "}
               </p>
             </div>
-            <p className="text-xl ml-12 font-medium">
+            <p className="text-2xl ml-12 font-bold">
               = {""}
               {new Intl.NumberFormat("nb-NO").format(yearlyCost.toFixed(0))} Kr
             </p>
@@ -828,7 +841,7 @@ export default function Map() {
           </li>
         </ul>
         <button
-          className="bg-red-500 self-center w-48 py-1 rounded-md text-sm funky mb-4"
+          className="bg-red-500 self-center w-48 py-1 rounded-md text-sm funky mb-12"
           onClick={toggleModal} // Open the modal
           disabled={isLoading || totalPanels < minPanels}
         >

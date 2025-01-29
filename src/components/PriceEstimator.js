@@ -51,8 +51,9 @@ export default function PriceEstimator({ onSelect }) {
       </div>
 
       <p className="italic text-center text-md mt-2">
-        Din anslåtte gjennomsnittlige strømpris:{" "}
-        <span className="text-red-500">{elPrice}</span> kWh.
+        Din anslåtte gjennomsnittlige strømpris:
+        <span className="text-red-500 font-bold text-md">{elPrice}</span> kr
+        kWh.
       </p>
     </div>
   );
