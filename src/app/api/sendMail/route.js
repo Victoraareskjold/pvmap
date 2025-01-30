@@ -16,6 +16,7 @@ export async function POST(req) {
       selectedPanelType,
       totalPanels,
       yearlyCost,
+      yearlyCost2,
       yearlyProd,
       address,
       site,
@@ -53,7 +54,9 @@ export async function POST(req) {
       ${JSON.stringify(checkedRoofData, null, 2)}
 
       Årlig produksjon: ${yearlyProd?.toFixed(0) || "Ikke tilgjengelig"}
-      Årlig kostnad: ${yearlyCost?.toFixed(0) || "Ikke tilgjengelig"}`,
+      Årlig kostnad: ${yearlyCost?.toFixed(0) || "Ikke tilgjengelig"} - ${
+        yearlyCost2?.toFixed(0) || "Ikke tilgjengelig"
+      }`,
     };
 
     // ✅ Attempt to Send Email

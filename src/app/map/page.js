@@ -52,6 +52,7 @@ export default function Map() {
   const [yearlyProd, setYearlyProd] = useState(0);
   const [potentialSaving, setPotentialSaving] = useState(0);
   const [yearlyCost, setYearlyCost] = useState(0);
+  const [yearlyCost2, setYearlyCost2] = useState(0);
 
   const [apiKey, setApiKey] = useState(null);
 
@@ -240,6 +241,7 @@ export default function Map() {
         //console.log("Google Sheets API response:", data); // Log API response
 
         setYearlyCost(parseFloat(data.valueFromB2 || 0));
+        setYearlyCost2(parseFloat(data.valueFromE2 || 0));
       } catch (error) {
         console.error("Feil under henting av data fra Google Sheets:", error);
       }
@@ -834,7 +836,10 @@ export default function Map() {
             </div>
             <p className="text-2xl ml-12 font-bold">
               = {""}
-              {new Intl.NumberFormat("nb-NO").format(yearlyCost.toFixed(0))} Kr
+              {new Intl.NumberFormat("nb-NO").format(
+                yearlyCost.toFixed(0)
+              )} -{" "}
+              {new Intl.NumberFormat("nb-NO").format(yearlyCost2.toFixed(0))} Kr
             </p>
             {/* Divider */}
             <div className="divider"></div>
@@ -862,6 +867,7 @@ export default function Map() {
             selectedPanelType={selectedPanelType}
             yearlyProd={yearlyProd}
             yearlyCost={yearlyCost}
+            yearlyCost2={yearlyCost2}
             address={address}
             toggleModal={toggleModal}
             site={site}

@@ -5,7 +5,7 @@ export async function POST(req) {
     const body = await req.json();
     const { totalPanels, selectedRoofType, selectedPanelType, site } = body;
 
-    const sheetName = site != null ? site : "vestelektro";
+    const sheetName = site != null ? site : "testing";
 
     console.log(sheetName);
 
@@ -62,8 +62,17 @@ export async function POST(req) {
       range: `${sheetName}!B2`, // Dette er cellen vi henter fra
     });
 
+    const responseE2 = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!E2`,
+    });
+
     const valueFromB2 = responseB2.data.values
       ? responseB2.data.values[0][0]
+      : null;
+
+    const valueFromE2 = responseE2.data.values
+      ? responseE2.data.values[0][0]
       : null;
 
     console.log("Verdi hentet fra B2:", valueFromB2);
@@ -74,10 +83,13 @@ export async function POST(req) {
       yearlyCost: row[0],
     }));
 
-    return new Response(JSON.stringify({ data: sheetData, valueFromB2 }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ data: sheetData, valueFromB2, valueFromE2 }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   } catch (error) {
     console.error("Feil ved henting av Google Sheets data:", error);
     return new Response(
