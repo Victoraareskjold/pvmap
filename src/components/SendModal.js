@@ -69,7 +69,7 @@ export default function SendModal({
 
       if (response.ok) {
         alert("Takk, du vil straks motta ditt estimat!");
-        window.top.location.href = "/takk"; // Navigerer hele hovedsiden til /takk
+        window.top.location.href = `https://www.${site}no/takk`;
       } else {
         console.error(error, "ved sending");
         alert("Noe gikk galt. Vennligst prøv igjen.");
