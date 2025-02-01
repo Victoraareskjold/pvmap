@@ -69,7 +69,7 @@ export default function SendModal({
 
       if (response.ok) {
         alert("Takk, du vil straks motta ditt estimat!");
-        router.push("/");
+        window.top.location.href = "/takk"; // Navigerer hele hovedsiden til /takk
       } else {
         console.error(error, "ved sending");
         alert("Noe gikk galt. Vennligst prøv igjen.");
