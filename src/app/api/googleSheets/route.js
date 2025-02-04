@@ -5,7 +5,7 @@ export async function POST(req) {
     const body = await req.json();
     const { totalPanels, selectedRoofType, selectedPanelType, site } = body;
 
-    const sheetName = site != null ? site : "testing";
+    const sheetName = site != "null" ? site : "vestelektrosol";
 
     console.log(sheetName);
 

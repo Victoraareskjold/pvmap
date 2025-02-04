@@ -220,6 +220,7 @@ export default function Map() {
 
   useEffect(() => {
     const fetchGoogleSheetsData = async () => {
+      setIsLoading(true);
       try {
         const response = await fetch("/api/googleSheets", {
           method: "POST",
@@ -245,6 +246,7 @@ export default function Map() {
       } catch (error) {
         console.error("Feil under henting av data fra Google Sheets:", error);
       }
+      setIsLoading(false);
     };
 
     const debounceTimeout = setTimeout(() => {
@@ -599,6 +601,7 @@ export default function Map() {
                 isChecked={isChecked}
                 adjustedPanelCounts={adjustedPanelCounts}
                 setAdjustedPanelCounts={setAdjustedPanelCounts}
+                minPanels={minPanels}
               />
               <div className="block md:hidden max-w-[32rem] mx-auto w-full">
                 <PriceEstimator onSelect={handleSelectedElPrice} />
