@@ -326,34 +326,12 @@ export default function Map() {
     }
   };
 
-  const [desiredKWh, setDesiredKWh] = useState(0); // State for strømforbruk
+  const [desiredKWh, setDesiredKWh] = useState(""); // State for strømforbruk
   const [coveragePercentage, setCoveragePercentage] = useState(40); // State for prosent
   const [errors, setErrors] = useState({ kWh: "", percentage: "" }); // State for feil
   const [roofDetails, setRoofDetails] = useState({});
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [checkedRoofData, setCheckedRoofData] = useState({});
-
-  const handleKWhChange = (e) => {
-    const rawValue = e.target.value.replace(/\s/g, "");
-    const numericValue = Number(rawValue);
-    if (!isNaN(numericValue)) {
-      setDesiredKWh(numericValue);
-    }
-  };
-
-  const handlePercentageChange = (e) => {
-    const rawValue = e.target.value.replace(/\s/g, "");
-    const numericValue = Number(rawValue);
-    if (!isNaN(numericValue)) {
-      if (numericValue < 1) {
-        setCoveragePercentage(1);
-      } else if (numericValue > 100) {
-        setCoveragePercentage(100);
-      } else {
-        setCoveragePercentage(numericValue);
-      }
-    }
-  };
 
   const toggleTooltip = (tooltipKey) => {
     setActiveTooltip((prev) => (prev === tooltipKey ? null : tooltipKey));
@@ -384,14 +362,6 @@ export default function Map() {
 
     if (!effectiveKWh || effectiveKWh <= 0 || isNaN(effectiveKWh)) {
       newErrors.kWh = "Skriv inn ønsket årlig strømforbruk (kWh).";
-    }
-    if (
-      !coveragePercentage ||
-      coveragePercentage < 1 ||
-      coveragePercentage > 100 ||
-      isNaN(coveragePercentage)
-    ) {
-      newErrors.percentage = "Dekningsprosent må være et tall mellom 1 og 100.";
     }
 
     console.log("Validation Errors:", newErrors);
@@ -424,8 +394,10 @@ export default function Map() {
 
       setDesiredKWh(adjustedKWhValue);
 
-      // Recalculate with adjusted KWh
-      setTimeout(() => handleCalculatePanels(adjustedKWhValue), 0);
+      if (adjustedKWhValue !== effectiveKWh) {
+        setTimeout(() => handleCalculatePanels(adjustedKWhValue), 0);
+      }
+
       return;
     }
 
@@ -646,12 +618,15 @@ export default function Map() {
               )}
               <input
                 id="kwh-input"
-                type="text"
-                value={desiredKWh.toLocaleString("nb-NO")}
-                onChange={handleKWhChange}
+                type="number"
+                value={desiredKWh}
+                className="fields"
+                onChange={(e) => {
+                  setDesiredKWh(e.target.value);
+                }}
                 placeholder="27 500"
               />
-              <span className="unit">kWh</span>
+              <span className="">kWh</span>
             </div>
             {errors.kWh && <span className="error-message">{errors.kWh}</span>}
           </div>
@@ -692,12 +667,29 @@ export default function Map() {
               )}
               <input
                 id="percent-input"
-                type="text"
-                value={coveragePercentage.toLocaleString("nb-NO")}
-                onChange={handlePercentageChange}
+                type="number"
+                value={coveragePercentage}
+                onChange={(e) => {
+                  let value = e.target.value;
+
+                  if (value > 100) {
+                    value = 100;
+                  }
+
+                  if (value < 0) {
+                    value = 0;
+                  }
+
+                  setCoveragePercentage(value);
+                }}
                 placeholder="40"
+                className="fields"
+                min="0"
+                max="100"
               />
-              <span className="unit">%</span>
+              <span className="" style={{ width: "20px" }}>
+                %
+              </span>
             </div>
             {errors.percentage && (
               <span className="error-message">{errors.percentage}</span>
@@ -837,13 +829,12 @@ export default function Map() {
                 Årlig gjennomsnittskostnad for solcelleanlegget over 30 år:{" "}
               </p>
             </div>
+
             <p className="text-2xl ml-12 font-bold">
-              = {""}
-              {new Intl.NumberFormat("nb-NO").format(
-                yearlyCost.toFixed(0)
-              )} -{" "}
+              = {new Intl.NumberFormat("nb-NO").format(yearlyCost.toFixed(0))} -{" "}
               {new Intl.NumberFormat("nb-NO").format(yearlyCost2.toFixed(0))} Kr
             </p>
+
             {/* Divider */}
             <div className="divider"></div>
           </li>

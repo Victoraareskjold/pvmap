@@ -18,7 +18,7 @@ export default function SendModal({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [checked, setChecked] = useState(false);
+  const [checked, setChecked] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
@@ -26,9 +26,11 @@ export default function SendModal({
   const handleNameChange = (e) => setName(e.target.value);
   const handleEmailChange = (e) => setEmail(e.target.value);
   const handlePhoneChange = (e) => setPhone(e.target.value);
-  const handleCheckChange = (e) => setChecked(!checked);
+  const handleCheckChange = (e) => setChecked(e.target.checked);
 
-  const handleSend = async () => {
+  const handleSend = async (e) => {
+    e.preventDefault();
+
     setLoading(true);
 
     if (checkedRoofData.length === 0) {
@@ -38,7 +40,12 @@ export default function SendModal({
     }
 
     if (email.trim() == "") {
-      alert("Vennligst skriv inn din e-postadresse.");
+      setLoading(false);
+      return;
+    }
+
+    if (!checked) {
+      alert("Vennligst huk av boksen også.");
       setLoading(false);
       return;
     }
@@ -68,7 +75,6 @@ export default function SendModal({
       });
 
       if (response.ok) {
-        alert("Takk, du vil straks motta ditt estimat!");
         window.top.location.href = `https://www.${site}.no/takk`;
       } else {
         console.error(error, "ved sending");
@@ -82,7 +88,10 @@ export default function SendModal({
   };
 
   return (
-    <div className="flex flex-col gap-3 bg-white rounded-xl modal z-50 p-4 w-full max-w-md fixed">
+    <form
+      onSubmit={handleSend}
+      className="flex flex-col gap-3 bg-white rounded-xl modal z-50 p-4 w-full max-w-md fixed"
+    >
       <button
         className="absolute top-4 right-4 text-red-500 text-xl"
         onClick={toggleModal}
@@ -102,6 +111,7 @@ export default function SendModal({
           placeholder="Fornavn Etternavn"
           value={name}
           onChange={handleNameChange}
+          required
         />
       </div>
 
@@ -112,6 +122,7 @@ export default function SendModal({
           placeholder="Telefonnummer"
           value={phone}
           onChange={handlePhoneChange}
+          required
         />
       </div>
 
@@ -123,11 +134,12 @@ export default function SendModal({
           placeholder="Din E-postaddresse"
           value={email}
           onChange={handleEmailChange}
+          required
         />
       </div>
 
       <div className="flex flex-row gap-2">
-        <input type="checkbox" value={checked} onChange={handleCheckChange} />
+        <input type="checkbox" checked={checked} onChange={handleCheckChange} />
         <p>
           Jeg godtar at informasjonen brukes kun til å sende tilbud på
           solcellepaneler via e-post og eventuelt kontakte meg på mobil.
@@ -145,6 +157,6 @@ export default function SendModal({
         tilgjengelig offentlig støtte. Investering i solcellepaneler har nylig
         blitt mye mer lønnsomt, noe som kan overraske deg positivt.
       </p>
-    </div>
+    </form>
   );
 }
