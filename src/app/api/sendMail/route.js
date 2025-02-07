@@ -20,6 +20,8 @@ export async function POST(req) {
       yearlyProd,
       address,
       site,
+      desiredKWh,
+      coveragePercentage,
     } = await req.json();
 
     // ✅ Input Validation
@@ -52,6 +54,9 @@ export async function POST(req) {
 
       Takdata:
       ${JSON.stringify(checkedRoofData, null, 2)}
+
+      Ønsket kwh prod.: ${desiredKWh}
+      Dekningsprosent: ${coveragePercentage}
 
       Årlig produksjon: ${yearlyProd?.toFixed(0) || "Ikke tilgjengelig"}
       Årlig kostnad: ${yearlyCost?.toFixed(0) || "Ikke tilgjengelig"} - ${

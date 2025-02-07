@@ -14,6 +14,8 @@ export default function SendModal({
   address,
   toggleModal,
   site,
+  desiredKWh,
+  coveragePercentage,
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -71,6 +73,8 @@ export default function SendModal({
           yearlyProd,
           address,
           site,
+          desiredKWh,
+          coveragePercentage,
         }),
       });
 

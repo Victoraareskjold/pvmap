@@ -865,6 +865,8 @@ export default function Map() {
             address={address}
             toggleModal={toggleModal}
             site={site}
+            desiredKWh={desiredKWh}
+            coveragePercentage={coveragePercentage}
           />
         </>
       )}
