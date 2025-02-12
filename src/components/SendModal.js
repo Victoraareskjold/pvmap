@@ -52,42 +52,48 @@ export default function SendModal({
       return;
     }
 
-    try {
-      const response = await fetch("/api/sendMail", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          email,
-          phone,
-          checked,
-          checkedRoofData,
-          selectedElPrice,
-          selectedRoofType,
-          selectedPanelType,
-          totalPanels,
-          yearlyCost,
-          yearlyCost2,
-          yearlyProd,
-          address,
-          site,
-          desiredKWh,
-          coveragePercentage,
-        }),
-      });
+    const data = {
+      name,
+      email,
+      phone,
+      checked,
+      checkedRoofData,
+      selectedElPrice,
+      selectedRoofType,
+      selectedPanelType,
+      totalPanels,
+      yearlyCost,
+      yearlyCost2,
+      yearlyProd,
+      address,
+      site,
+      desiredKWh,
+      coveragePercentage,
+    };
 
-      if (response.ok) {
-        window.top.location.href = `https://www.${site}.no/takk`;
-      } else {
-        console.error(error, "ved sending");
+    if (site === "solarinstallationdashboard") {
+      window.parent.postMessage({ type: "PVMAP_DATA", payload: data }, "*");
+    } else {
+      try {
+        const response = await fetch("/api/sendMail", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (response.ok) {
+          window.top.location.href = `https://www.${site}.no/takk`;
+        } else {
+          console.error(error, "ved sending");
+          alert("Noe gikk galt. Vennligst prøv igjen.");
+        }
+      } catch (error) {
         alert("Noe gikk galt. Vennligst prøv igjen.");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      alert("Noe gikk galt. Vennligst prøv igjen.");
-    } finally {
-      setLoading(false);
     }
   };
 
