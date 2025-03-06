@@ -12,14 +12,24 @@ export default function PanelMengde({ selectedPanelType, totalPanels }) {
           {totalPanels} paneler
         </div>
       </div>
-      <p className="text-md sm:text-md text-[#666]">
-        Premiumpaneler gir en optimal kombinasjon av høy ytelse, stilrent design
-        og konkurransedyktig pris. De har lavere overflatetemperatur og bedre
-        innebygd shading, noe som reduserer tap ved hindringer som fugleskitt
-        eller andre elementer på overflaten. Panelene har også svært lav
-        degenerering over tid, med 25 års produktgaranti og 30 års
-        effektgaranti.
-      </p>
+      {selectedPanelType.includes("Premium") && (
+        <p className="text-md sm:text-md text-[#666]">
+          Premiumpaneler gir en optimal kombinasjon av høy ytelse, stilrent
+          design og konkurransedyktig pris. De har lavere overflatetemperatur og
+          bedre innebygd shading, noe som reduserer tap ved hindringer som
+          fugleskitt eller andre elementer på overflaten. Panelene har også
+          svært lav degenerering over tid, med 25 års produktgaranti og 30 års
+          effektgaranti.
+        </p>
+      )}
+      {selectedPanelType.includes("Max Power") && (
+        <p className="text-md sm:text-md text-[#666]">
+          Power Max-paneler gir deg maksimal produksjon og er ideelle for deg
+          som vil utnytte takets fulle potensial. De har 30 års produktgaranti
+          og 25 års effektgaranti. Selv om de koster litt mer, får du høyere
+          produksjon som gir ekstra verdi over tid.
+        </p>
+      )}
     </div>
   );
 }
