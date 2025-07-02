@@ -1,5 +1,9 @@
 import fetch from "node-fetch";
 
+export const config = {
+  runtime: "nodejs",
+};
+
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const lat = searchParams.get("lat");
