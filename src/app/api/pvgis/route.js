@@ -2,6 +2,7 @@ import fetch from "node-fetch";
 
 export const config = {
   runtime: "nodejs",
+  regions: ["fra1", "cdg1", "arn1"],
 };
 
 export async function GET(req) {
