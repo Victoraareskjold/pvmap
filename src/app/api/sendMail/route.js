@@ -1,7 +1,4 @@
-import sendGridMail from "@sendgrid/mail";
 import { NextResponse } from "next/server";
-
-sendGridMail.setApiKey(process.env.SENDGRID);
 
 export async function POST(req) {
   try {
@@ -24,7 +21,6 @@ export async function POST(req) {
       coveragePercentage,
     } = await req.json();
 
-    // ✅ Input Validation
     if (!name || !email || !address || !phone) {
       return NextResponse.json(
         {
@@ -35,48 +31,57 @@ export async function POST(req) {
       );
     }
 
-    const msg = {
-      to: "asbjorn@sooleklart.com",
-      from: "asbjorn@sooleklart.com",
-      subject: `${name} har etterspurt et solcelleestimat!`,
-      text: `Nettside: ${site}
-      Navn: ${name}
-      Email: ${email}
-      Adresse: ${address}
-      Vil bli ringt? ${checked ? "Ja" : "Nei"}
-      Telefon: ${phone}
+    // 🔐 Miljøvariabler
+    const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
+    const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
+    const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
 
-      Type paneler: ${selectedPanelType}
-      Taktype: ${selectedRoofType}
-
-      Estimert elektrisitetspris: ${selectedElPrice} kr/kWh
-      Antall paneler: ${totalPanels}
-
-      Takdata:
-      ${JSON.stringify(checkedRoofData, null, 2)}
-
-      Ønsket kwh prod.: ${desiredKWh}
-      Dekningsprosent: ${coveragePercentage}
-
-      Årlig produksjon: ${yearlyProd?.toFixed(0) || "Ikke tilgjengelig"}
-      Årlig kostnad: ${yearlyCost?.toFixed(0) || "Ikke tilgjengelig"} - ${
-        yearlyCost2?.toFixed(0) || "Ikke tilgjengelig"
-      }`,
+    // 💡 Lag dataobjekt som matcher template på EmailJS
+    const templateParams = {
+      name,
+      email,
+      phone,
+      address,
+      site,
+      checked: checked ? "Ja" : "Nei",
+      selectedRoofType,
+      selectedPanelType,
+      selectedElPrice,
+      totalPanels,
+      yearlyCost: yearlyCost?.toFixed(0) || "Ikke tilgjengelig",
+      yearlyCost2: yearlyCost2?.toFixed(0) || "Ikke tilgjengelig",
+      yearlyProd: yearlyProd?.toFixed(0) || "Ikke tilgjengelig",
+      checkedRoofData: JSON.stringify(checkedRoofData, null, 2),
+      desiredKWh,
+      coveragePercentage,
     };
 
-    // ✅ Attempt to Send Email
-    await sendGridMail.send(msg);
-    console.log("✅ E-post sendt!");
+    const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_TEMPLATE_ID,
+        user_id: EMAILJS_PUBLIC_KEY,
+        template_params: templateParams,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`EmailJS-feil: ${errorText}`);
+    }
+
+    console.log("✅ E-post sendt med EmailJS!");
     return NextResponse.json({ message: "E-post sendt!" }, { status: 200 });
   } catch (error) {
-    console.error(
-      "❌ SendGrid-feil:",
-      error.response?.body || error.message || error
-    );
+    console.error("❌ EmailJS-feil:", error.message || error);
     return NextResponse.json(
       {
         error: "Feil under sending av e-post",
-        details: error.response?.body || error.message,
+        details: error.message,
       },
       { status: 500 }
     );

@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import emailjs from "@emailjs/browser";
 
 export default function SendModal({
   checkedRoofData,
@@ -32,7 +33,6 @@ export default function SendModal({
 
   const handleSend = async (e) => {
     e.preventDefault();
-
     setLoading(true);
 
     if (checkedRoofData.length === 0) {
@@ -40,60 +40,50 @@ export default function SendModal({
       setLoading(false);
       return;
     }
-
-    if (email.trim() == "") {
+    if (!email.trim()) {
       setLoading(false);
       return;
     }
-
     if (!checked) {
       alert("Vennligst huk av boksen også.");
       setLoading(false);
       return;
     }
 
-    const data = {
+    const templateParams = {
       name,
       email,
       phone,
-      checked,
-      checkedRoofData,
-      selectedElPrice,
-      selectedRoofType,
-      selectedPanelType,
-      totalPanels,
-      yearlyCost,
-      yearlyCost2,
-      yearlyProd,
       address,
       site,
+      checked: checked ? "Ja" : "Nei",
+      selectedRoofType,
+      selectedPanelType,
+      selectedElPrice,
+      totalPanels,
+      yearlyCost: yearlyCost?.toFixed(0) || "Ikke tilgjengelig",
+      yearlyCost2: yearlyCost2?.toFixed(0) || "Ikke tilgjengelig",
+      yearlyProd: yearlyProd?.toFixed(0) || "Ikke tilgjengelig",
+      checkedRoofData: JSON.stringify(checkedRoofData, null, 2),
       desiredKWh,
       coveragePercentage,
     };
 
-    if (site === "solarinstallationdashboard") {
-      window.parent.postMessage({ type: "PVMAP_DATA", payload: data }, "*");
-    } else {
-      try {
-        const response = await fetch("/api/sendMail", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        });
+    try {
+      const res = await emailjs.send(
+        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
+        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
+        templateParams,
+        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
+      );
 
-        if (response.ok) {
-          window.top.location.href = `https://www.${site}.no/takk`;
-        } else {
-          console.error(error, "ved sending");
-          alert("Noe gikk galt. Vennligst prøv igjen.");
-        }
-      } catch (error) {
-        alert("Noe gikk galt. Vennligst prøv igjen.");
-      } finally {
-        setLoading(false);
-      }
+      console.log("✅ E-post sendt:", res.text);
+      window.top.location.href = `https://www.${site}.no/takk`;
+    } catch (error) {
+      console.error("❌ Feil ved sending:", error);
+      alert("Noe gikk galt. Vennligst prøv igjen.");
+    } finally {
+      setLoading(false);
     }
   };
 

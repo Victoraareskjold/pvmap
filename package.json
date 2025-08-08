@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@sendgrid/mail": "^8.1.4",
     "dotenv": "^16.4.5",
     "dynamic": "^4.2.2",
