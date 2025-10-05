@@ -64,7 +64,7 @@ export default function SendModal({
       yearlyCost: yearlyCost?.toFixed(0) || "Ikke tilgjengelig",
       yearlyCost2: yearlyCost2?.toFixed(0) || "Ikke tilgjengelig",
       yearlyProd: yearlyProd?.toFixed(0) || "Ikke tilgjengelig",
-      checkedRoofData: JSON.stringify(checkedRoofData, null, 2),
+      checkedRoofData: checkedRoofData || [],
       desiredKWh,
       coveragePercentage,
     };
