@@ -70,6 +70,12 @@ export default function SendModal({
     };
 
     try {
+      if (site === "solarinstallationdashboard") {
+        window.parent.postMessage({ type: "PVMAP_DATA", payload: data }, "*");
+        console.log("✅ PVMAP_DATA sendt til parent:", data);
+        return;
+      }
+
       const res = await emailjs.send(
         process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
         process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
