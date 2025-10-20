@@ -42,8 +42,6 @@ export async function GET(req) {
       headers: { Accept: "application/json" },
     });
 
-    console.log(response);
-
     if (!response.ok) {
       return new Response(
         JSON.stringify({ error: `API-feil: ${response.statusText}` }),

@@ -1,5 +1,4 @@
 "use client";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import emailjs from "@emailjs/browser";
 
@@ -23,8 +22,6 @@ export default function SendModal({
   const [phone, setPhone] = useState("");
   const [checked, setChecked] = useState(true);
   const [loading, setLoading] = useState(false);
-
-  const router = useRouter();
 
   const handleNameChange = (e) => setName(e.target.value);
   const handleEmailChange = (e) => setEmail(e.target.value);
@@ -50,7 +47,7 @@ export default function SendModal({
       return;
     }
 
-    const templateParams = {
+    const payload = {
       name,
       email,
       phone,
@@ -61,10 +58,19 @@ export default function SendModal({
       selectedPanelType,
       selectedElPrice,
       totalPanels,
-      yearlyCost: yearlyCost?.toFixed(0) || "Ikke tilgjengelig",
-      yearlyCost2: yearlyCost2?.toFixed(0) || "Ikke tilgjengelig",
-      yearlyProd: yearlyProd?.toFixed(0) || "Ikke tilgjengelig",
-      checkedRoofData: checkedRoofData || [],
+      yearlyCost: Number(yearlyCost?.toFixed(0)) || "Ikke tilgjengelig",
+      yearlyCost2: Number(yearlyCost2?.toFixed(0)) || "Ikke tilgjengelig",
+      yearlyProd: Number(yearlyProd?.toFixed(0)) || "Ikke tilgjengelig",
+      checkedRoofData: checkedRoofData
+        .map(
+          (r) =>
+            `TakID: ${r.roofId}, Justerte paneler: ${
+              r.adjustedPanelCount
+            }, Max paneler: ${r.maxPanels}, Retning: ${
+              r.direction
+            }, Vinkel: ${r.angle.toFixed(2)}`
+        )
+        .join("\n"),
       desiredKWh,
       coveragePercentage,
     };
@@ -81,11 +87,11 @@ export default function SendModal({
       const res = await emailjs.send(
         process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
         process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
-        templateParams,
+        payload,
         process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
       );
 
-      console.log("✅ E-post sendt:", res.text);
+      console.log("✅ E-post sendt:", res);
       window.top.location.href = `https://www.${site}.no/takk`;
     } catch (error) {
       console.error("❌ Feil ved sending:", error);
@@ -108,7 +114,7 @@ export default function SendModal({
       </button>
       <p className="text-md w-5/6">
         Informasjonen du har fylt ut i solkartet, sendes automatisk til oss.
-        Mangler noe, går det fint – vi lager et forslag som passer best for deg.
+        Mangler noe, går det fint - vi lager et forslag som passer best for deg.
         Fyll ut resten nedenfor for et uforpliktende tilbud.
       </p>
 

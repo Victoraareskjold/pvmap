@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req) {
   try {
+    const body = await req.json();
     const {
       name,
       email,
@@ -19,7 +20,7 @@ export async function POST(req) {
       site,
       desiredKWh,
       coveragePercentage,
-    } = await req.json();
+    } = body;
 
     if (!name || !email || !address || !phone) {
       return NextResponse.json(
