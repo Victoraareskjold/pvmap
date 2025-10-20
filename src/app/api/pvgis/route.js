@@ -1,5 +1,3 @@
-import fetch from "node-fetch";
-
 export const config = {
   runtime: "nodejs",
   regions: ["fra1", "cdg1", "arn1"],
@@ -17,8 +15,6 @@ export async function GET(req) {
   const peakpower = (panelCount * panelWattage) / 1000;
 
   let systemLoss = 0;
-
-  console.log(lat, lng, panelCount, aspect, angle);
 
   if (panelCount <= 40) {
     systemLoss = 0;
