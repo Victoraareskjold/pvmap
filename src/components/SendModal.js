@@ -77,10 +77,7 @@ export default function SendModal({
 
     try {
       if (site === "solarinstallationdashboard") {
-        window.parent.postMessage(
-          { type: "PVMAP_DATA", payload: templateParams },
-          "*"
-        );
+        window.parent.postMessage({ type: "PVMAP_DATA", payload }, "*");
         return;
       }
 
