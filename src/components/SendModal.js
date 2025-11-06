@@ -61,16 +61,7 @@ export default function SendModal({
       yearlyCost: Number(yearlyCost?.toFixed(0)) || "Ikke tilgjengelig",
       yearlyCost2: Number(yearlyCost2?.toFixed(0)) || "Ikke tilgjengelig",
       yearlyProd: Number(yearlyProd?.toFixed(0)) || "Ikke tilgjengelig",
-      checkedRoofData: checkedRoofData
-        .map(
-          (r) =>
-            `TakID: ${r.roofId}, Justerte paneler: ${
-              r.adjustedPanelCount
-            }, Max paneler: ${r.maxPanels}, Retning: ${
-              r.direction
-            }, Vinkel: ${r.angle.toFixed(2)}`
-        )
-        .join("\n"),
+      checkedRoofData: checkedRoofData || [],
       desiredKWh,
       coveragePercentage,
     };
