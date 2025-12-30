@@ -32,19 +32,21 @@ export default function SendModal({
     e.preventDefault();
     setLoading(true);
 
-    if (checkedRoofData.length === 0) {
-      alert("Velg minst 6 paneler!");
-      setLoading(false);
-      return;
-    }
-    if (!email.trim()) {
-      setLoading(false);
-      return;
-    }
-    if (!checked) {
-      alert("Vennligst huk av boksen også.");
-      setLoading(false);
-      return;
+    if (site !== null) {
+      if (checkedRoofData.length === 0) {
+        alert("Velg minst 6 paneler!");
+        setLoading(false);
+        return;
+      }
+      if (!email.trim()) {
+        setLoading(false);
+        return;
+      }
+      if (!checked) {
+        alert("Vennligst huk av boksen også.");
+        setLoading(false);
+        return;
+      }
     }
 
     const payload = {

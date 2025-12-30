@@ -23,6 +23,7 @@ export default function Map() {
   const address = searchParams.get("address");
   const addressId = searchParams.get("addressId");
   const site = searchParams.get("site");
+  const preAdr = searchParams.get("preAdr");
   const router = useRouter();
   const pricesRef = useRef(null);
 

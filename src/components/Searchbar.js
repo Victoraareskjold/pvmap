@@ -1,14 +1,16 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Searchbar() {
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const preAdr = searchParams.get("preAdr");
+  const site = searchParams.get("site");
+
+  const [query, setQuery] = useState(preAdr || "");
+
   const [results, setResults] = useState([]);
   const [showError, setShowError] = useState(false); // Ny tilstand for feilmeldingen
-  const searchParams = useSearchParams();
-
-  const site = searchParams.get("site");
 
   const router = useRouter();
 
@@ -50,9 +52,16 @@ export default function Searchbar() {
   };
 
   const handleAddressSelect = (address) => {
-    const url = `/map?lat=${address.latlng.lat}&lng=${address.latlng.lng}&address=${address.text}&addressId=${address.id}&site=${site}`;
+    const url = `/map?lat=${address.latlng.lat}&lng=${address.latlng.lng}&address=${address.text}&addressId=${address.id}&site=${site}&preAdr=${preAdr}`;
     router.push(url);
   };
+
+  useEffect(() => {
+    if (preAdr) {
+      handleSearch(preAdr);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preAdr]);
 
   return (
     <div className="flex flex-col gap-4 w-full">
