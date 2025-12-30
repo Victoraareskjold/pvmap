@@ -32,7 +32,7 @@ export default function SendModal({
     e.preventDefault();
     setLoading(true);
 
-    if (site !== null) {
+    if (site !== "solarinstallationdashboard") {
       if (checkedRoofData.length === 0) {
         alert("Velg minst 6 paneler!");
         setLoading(false);
