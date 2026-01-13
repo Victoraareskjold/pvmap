@@ -22,9 +22,9 @@ export default function PanelMengde({ selectedPanelType, totalPanels }) {
           effektgaranti.
         </p>
       )}
-      {selectedPanelType.includes("Max Power") && (
+      {selectedPanelType.includes("Performance") && (
         <p className="text-md sm:text-md text-[#666]">
-          Power Max-paneler gir deg maksimal produksjon og er ideelle for deg
+          Performance paneler gir deg maksimal produksjon og er ideelle for deg
           som vil utnytte takets fulle potensial. De har 30 års produktgaranti
           og 25 års effektgaranti. Selv om de koster litt mer, får du høyere
           produksjon som gir ekstra verdi over tid.

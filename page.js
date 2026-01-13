@@ -172,7 +172,10 @@ export default function Map() {
           />
           <SelectOption
             title="Paneltype:"
-            options={["Premium - 415 W", "Max Power - 460 W"]}
+            options={[
+              "Premium all black, 430W",
+              "Performance all black, 460W Bifacial",
+            ]}
           />
         </div>
         <p>
@@ -210,7 +213,7 @@ export default function Map() {
           </ul>
         )}
         <div className="flex flex-row gap-4">
-          <p>Sum paneler (Premium 415W): </p>
+          <p>Sum paneler (Premium all black, 430W): </p>
           <p className="bg-orange-500 p-2 rounded-md border border-white text-white">
             {totalPanelCount} {totalPanelCount > 1 ? "Paneler" : "Panel"}
           </p>

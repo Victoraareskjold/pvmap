@@ -30,7 +30,9 @@ export default function Map() {
   const [selectedRoofType, setSelectedRoofType] = useState(
     "Takstein (Dobbelkrummet)"
   );
-  const [selectedPanelType, setSelectedPanelType] = useState("Premium 415 W");
+  const [selectedPanelType, setSelectedPanelType] = useState(
+    "Premium all black, 430W"
+  );
   const [selectedElPrice, setSelectedElPrice] = useState(1.5);
 
   const [combinedData, setCombinedData] = useState([]);
@@ -482,6 +484,7 @@ export default function Map() {
     selectedPanelType,
     yearlyProd,
     yearlyCost,
+    address,
   ]);
 
   const routeBack = () => {
@@ -552,7 +555,10 @@ export default function Map() {
             />
             <SelectOption
               title="Paneltype:"
-              options={["Premium 415 W", "Max Power 460 W"]}
+              options={[
+                "Premium all black, 430W",
+                "Performance all black, 460W Bifacial",
+              ]}
               onSelect={handlePanelTypeChange}
             />
           </div>

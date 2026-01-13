@@ -6,7 +6,7 @@ export async function POST(req) {
     const { totalPanels, selectedRoofType, selectedPanelType, site } = body;
 
     const sheetName =
-      site == "null" || "solarinstallationdashboard" ? "vestelektrosol" : site;
+      site == "null" ? "solarinstallationdashboard" : "vestelektrosol";
 
     console.log(sheetName);
 
