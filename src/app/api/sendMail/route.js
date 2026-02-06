@@ -28,7 +28,7 @@ export async function POST(req) {
           error:
             "Manglende påkrevde felter: navn, e-post, adresse, eller telefon.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -84,7 +84,7 @@ export async function POST(req) {
         error: "Feil under sending av e-post",
         details: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

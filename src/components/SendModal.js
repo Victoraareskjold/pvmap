@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import emailjs from "@emailjs/browser";
+import { getLocalStorage } from "../../utils/localstorage";
 
 export default function SendModal({
   checkedRoofData,
@@ -49,6 +50,10 @@ export default function SendModal({
       }
     }
 
+    const gclid = getLocalStorage("gclid") ?? "";
+    const fbclid = getLocalStorage("fbclid") ?? "";
+    const utmCampaign = getLocalStorage("utmCampaign") ?? "";
+
     const payload = {
       name,
       email,
@@ -66,6 +71,9 @@ export default function SendModal({
       checkedRoofData: checkedRoofData || [],
       desiredKWh,
       coveragePercentage,
+      gclid,
+      fbclid,
+      utmCampaign,
     };
 
     try {
@@ -78,7 +86,7 @@ export default function SendModal({
         process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
         process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
         payload,
-        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
+        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY,
       );
 
       console.log("✅ E-post sendt:", res);
