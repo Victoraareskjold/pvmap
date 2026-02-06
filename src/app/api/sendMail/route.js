@@ -20,6 +20,9 @@ export async function POST(req) {
       site,
       desiredKWh,
       coveragePercentage,
+      gclid,
+      fbclid,
+      utmCampaign,
     } = body;
 
     if (!name || !email || !address || !phone) {
@@ -55,6 +58,9 @@ export async function POST(req) {
       checkedRoofData: JSON.stringify(checkedRoofData, null, 2),
       desiredKWh,
       coveragePercentage,
+      gclid,
+      fbclid,
+      utmCampaign,
     };
 
     const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
