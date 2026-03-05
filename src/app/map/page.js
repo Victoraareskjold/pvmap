@@ -28,10 +28,10 @@ export default function Map() {
   const pricesRef = useRef(null);
 
   const [selectedRoofType, setSelectedRoofType] = useState(
-    "Takstein (Dobbelkrummet)"
+    "Takstein (Dobbelkrummet)",
   );
   const [selectedPanelType, setSelectedPanelType] = useState(
-    "Premium all black, 430W"
+    "Premium all black, 430W",
   );
   const [selectedElPrice, setSelectedElPrice] = useState(1.5);
 
@@ -45,7 +45,7 @@ export default function Map() {
 
   const totalPanels = Object.values(adjustedPanelCounts).reduce(
     (total, count) => total + count,
-    0
+    0,
   );
 
   const [visibleRoofs, setVisibleRoofs] = useState([]);
@@ -115,7 +115,7 @@ export default function Map() {
         if (!roofResponse.ok) {
           console.error(
             "Feil ved henting av takdata: ",
-            roofResponse.statusText
+            roofResponse.statusText,
           );
           return;
         }
@@ -258,7 +258,7 @@ export default function Map() {
         fetchGoogleSheetsData();
       } else {
         console.warn(
-          "⚠️ Ingen paneler valgt. Årlig kostnad kan ikke beregnes."
+          "⚠️ Ingen paneler valgt. Årlig kostnad kan ikke beregnes.",
         );
       }
     }, 500); // 500ms debounce
@@ -282,11 +282,13 @@ export default function Map() {
   };
 
   const toggleRoof = (roofId, isCheckedNow) => {
+    const roofData = combinedData.find((roof) => roof.id === roofId);
     setIsChecked((prev) => ({
       ...prev,
       [roofId]: isCheckedNow,
     }));
-    console.log(roofId);
+    console.log("id:", roofId);
+    console.log("helning: ", roofData.angle);
 
     if (isCheckedNow) {
       setVisibleRoofs((prev) => [...prev, roofId]);
@@ -384,14 +386,14 @@ export default function Map() {
 
     if (energyRequirement > maxCoverage) {
       const adjustedKWhValue = Math.floor(
-        (maxCoverage / coveragePercentage) * 100
+        (maxCoverage / coveragePercentage) * 100,
       );
 
       // Set the error message
       setErrors((prev) => ({
         ...prev,
         calculation: `Maksimal dekning er ${adjustedKWhValue.toLocaleString(
-          "nb-NO"
+          "nb-NO",
         )} kWh.`,
       }));
 
@@ -412,7 +414,7 @@ export default function Map() {
     console.log("Starting roof sorting and panel allocation...");
 
     const sortedRoofs = [...combinedData].sort(
-      (a, b) => b.efficiencyPerPanel - a.efficiencyPerPanel
+      (a, b) => b.efficiencyPerPanel - a.efficiencyPerPanel,
     );
 
     for (const roof of sortedRoofs) {
@@ -420,7 +422,7 @@ export default function Map() {
 
       const panelsNeeded = Math.min(
         Math.ceil(remainingEnergy / (roof.efficiencyPerPanel || 1)),
-        roof.panels.panelCount
+        roof.panels.panelCount,
       );
 
       if (panelsNeeded > 0) {
@@ -493,7 +495,7 @@ export default function Map() {
 
   useEffect(() => {
     const sortedData = combinedData.filter(
-      (roof) => roof.panels.panelCount >= minPanels
+      (roof) => roof.panels.panelCount >= minPanels,
     );
 
     setVisibleRoofs(sortedData.slice(0, 2).map((roof) => roof.id));
@@ -770,11 +772,11 @@ export default function Map() {
             <p className="text-2xl ml-12 font-bold">
               = {""}
               {new Intl.NumberFormat("nb-NO").format(
-                (yearlyProd * 0.95).toFixed(0)
+                (yearlyProd * 0.95).toFixed(0),
               )}{" "}
               -{" "}
               {new Intl.NumberFormat("nb-NO").format(
-                (yearlyProd * 1.05).toFixed(0)
+                (yearlyProd * 1.05).toFixed(0),
               )}{" "}
               kWh
             </p>
@@ -801,13 +803,14 @@ export default function Map() {
                 </div>
               )}
               <p className="font-medium text-lg">
-                Din forventet årlig besparelse/inntekt fra solcelleanlegget:{" "}
+                Din forventet årlig besparelse/inntekt fra
+                solcelleanlegget:{" "}
               </p>
             </div>
             <p className="text-2xl ml-12 font-bold">
               = {""}
               {new Intl.NumberFormat("nb-NO").format(
-                potentialSaving.toFixed(0)
+                potentialSaving.toFixed(0),
               )}{" "}
               Kr
             </p>

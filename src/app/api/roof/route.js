@@ -18,17 +18,19 @@ export async function GET(req) {
           Accept: "application/json",
           "X-WAAPI-TOKEN": process.env.NORKART_API_KEY_BACKEND,
         },
-      }
+      },
     );
 
     if (!response.ok) {
       return new Response(
         JSON.stringify({ error: `API-feil: ${response.statusText}` }),
-        { status: response.status }
+        { status: response.status },
       );
     }
 
     const data = await response.json();
+
+    console.log(data);
 
     return new Response(JSON.stringify(data), {
       headers: { "Content-Type": "application/json" },
@@ -37,7 +39,7 @@ export async function GET(req) {
   } catch (error) {
     return new Response(
       JSON.stringify({ error: "Feil under kommunikasjon med Norkart API" }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
