@@ -13,7 +13,7 @@ export async function POST(req) {
     if (totalPanels < 0) {
       return new Response(
         JSON.stringify({ error: "Total Panels parameter mangler" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -89,13 +89,13 @@ export async function POST(req) {
       {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   } catch (error) {
     console.error("Feil ved henting av Google Sheets data:", error);
     return new Response(
       JSON.stringify({ error: "Feil ved henting av Google Sheets data" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 }
