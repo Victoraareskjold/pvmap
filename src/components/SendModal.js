@@ -56,6 +56,7 @@ export default function SendModal({
 
     const payload = {
       site,
+      checked: checked ? "Ja" : "Nei",
       user_address: address,
       user_name: name,
       user_phone: phone,
