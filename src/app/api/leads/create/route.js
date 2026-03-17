@@ -57,6 +57,7 @@ export async function POST(req) {
         person_info: user_name,
         address: user_address,
         phone: user_phone,
+        status: 6,
         email: user_email,
         note: `
         Tracking:
@@ -65,7 +66,7 @@ export async function POST(req) {
         utmCampaign: ${utmCampaign || ""}
 
         selectedRoofType: ${selectedRoofType || ""},
-        selectedPanelType ${selectedPanelType || ""},
+        selectedPanelType: ${selectedPanelType || ""},
         selectedElPrice: ${selectedElPrice || ""},
         totalPanels: ${totalPanels || 0},
         yearlyCost: ${yearlyCost || 0},

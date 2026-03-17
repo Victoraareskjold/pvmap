@@ -84,34 +84,16 @@ export default function SendModal({
       await fetch("/api/leads/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          site,
-          user_address: address,
-          user_name: name,
-          user_phone: phone,
-          user_email: email,
-          gclid,
-          fbclid,
-          utmCampaign,
-          selectedRoofType,
-          selectedPanelType,
-          selectedElPrice,
-          totalPanels,
-          yearlyCost,
-          yearlyCost2,
-          yearlyProd,
-          checkedRoofData,
-          desiredKWh,
-          coveragePercentage,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      emailjs.sendForm(
+      const res = await emailjs.send(
         process.env.NEXT_PUBLIC_SERVICE_ID,
         process.env.NEXT_PUBLIC_TEMPLATE_ID,
-        formRef.current,
+        payload,
         process.env.NEXT_PUBLIC_PUBLIC_KEY,
       );
+      console.log("✅ E-post sendt:", res);
       window.top.location.href = `https://www.${site}.no/takk`;
     } catch (error) {
       console.error("❌ Feil ved sending:", error);
@@ -128,7 +110,8 @@ export default function SendModal({
     >
       <button
         className="absolute top-4 right-4 text-red-500 text-xl"
-        type="submit"
+        type="button"
+        onClick={toggleModal}
       >
         ×
       </button>
@@ -181,7 +164,7 @@ export default function SendModal({
       </div>
       <button
         className="bg-red-500 self-center !w-full py-1 rounded-md text-sm funky !mt-0"
-        onClick={handleSend}
+        type="submit"
         disabled={loading}
       >
         {loading ? "Sender..." : "Jeg ønsker uforpliktende tilbud"}
