@@ -55,12 +55,14 @@ export default function SendModal({
     const utmCampaign = getLocalStorage("utmCampaign") ?? "";
 
     const payload = {
-      name,
-      email,
-      phone,
-      address,
       site,
-      checked: checked ? "Ja" : "Nei",
+      user_address: address,
+      user_name: name,
+      user_phone: phone,
+      user_email: email,
+      gclid,
+      fbclid,
+      utmCampaign,
       selectedRoofType,
       selectedPanelType,
       selectedElPrice,
@@ -71,9 +73,6 @@ export default function SendModal({
       checkedRoofData: checkedRoofData || [],
       desiredKWh,
       coveragePercentage,
-      gclid,
-      fbclid,
-      utmCampaign,
     };
 
     try {
@@ -82,14 +81,37 @@ export default function SendModal({
         return;
       }
 
-      const res = await emailjs.send(
-        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
-        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
-        payload,
-        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY,
-      );
+      await fetch("/api/leads/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          site,
+          user_address: address,
+          user_name: name,
+          user_phone: phone,
+          user_email: email,
+          gclid,
+          fbclid,
+          utmCampaign,
+          selectedRoofType,
+          selectedPanelType,
+          selectedElPrice,
+          totalPanels,
+          yearlyCost,
+          yearlyCost2,
+          yearlyProd,
+          checkedRoofData,
+          desiredKWh,
+          coveragePercentage,
+        }),
+      });
 
-      console.log("✅ E-post sendt:", res);
+      emailjs.sendForm(
+        process.env.NEXT_PUBLIC_SERVICE_ID,
+        process.env.NEXT_PUBLIC_TEMPLATE_ID,
+        formRef.current,
+        process.env.NEXT_PUBLIC_PUBLIC_KEY,
+      );
       window.top.location.href = `https://www.${site}.no/takk`;
     } catch (error) {
       console.error("❌ Feil ved sending:", error);
@@ -106,7 +128,7 @@ export default function SendModal({
     >
       <button
         className="absolute top-4 right-4 text-red-500 text-xl"
-        onClick={toggleModal}
+        type="submit"
       >
         ×
       </button>
