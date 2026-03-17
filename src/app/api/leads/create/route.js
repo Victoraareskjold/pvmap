@@ -83,7 +83,7 @@ export async function POST(req) {
 
     if (leadError) throw leadError;
 
-    const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+    /* const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
 
     if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
       console.error("Missing SMTP env vars");
@@ -109,7 +109,7 @@ export async function POST(req) {
           <p>${user_name} har etterspurt estimat gjennom nettsiden.</p>
         </div>
       `,
-    });
+    }); */
 
     return NextResponse.json({ success: true, lead });
   } catch (err) {
