@@ -65,7 +65,7 @@ export async function POST(req) {
         ${user_comment}
 
         Equipment:
-        ${user_equipment}
+        ${JSON.stringify(user_equipment)}
         
         Tracking:
         gclid: ${gclid || ""}

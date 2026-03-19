@@ -22,7 +22,7 @@ export default function Map() {
 
   const totalPanelCount = solarData.reduce(
     (acc, solar) => acc + solar.panelCount,
-    0
+    0,
   );
 
   const [yearlyProd, setYearlyProd] = useState(0);
@@ -37,7 +37,7 @@ export default function Map() {
           if (!response.ok) {
             console.error(
               `Feil med statuskode ${response.status}:`,
-              response.statusText
+              response.statusText,
             );
             return;
           }
@@ -121,7 +121,7 @@ export default function Map() {
               if (!response.ok) {
                 console.error(
                   `Feil med statuskode ${response.status}:`,
-                  response.statusText
+                  response.statusText,
                 );
                 continue;
               }
@@ -139,10 +139,6 @@ export default function Map() {
     };
     fetchPVDataForEachRoof();
   }, [lat, lng, solarData]);
-
-  console.log(roofData);
-  console.log(solarData);
-  console.log(pvData, "her");
 
   return (
     <div className="flex flex-row m-w-5xl w-full">

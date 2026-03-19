@@ -64,7 +64,7 @@ export default function SendModal({
       user_name: name,
       user_phone: phone,
       user_email: email,
-      user_equipment: equipmentChoice,
+      user_equipment: selectedEquipment,
       user_comment: comment,
       gclid,
       fbclid,

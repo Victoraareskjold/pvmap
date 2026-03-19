@@ -80,8 +80,6 @@ export async function POST(req) {
       const errorText = await res.text();
       throw new Error(`EmailJS-feil: ${errorText}`);
     }
-
-    console.log("✅ E-post sendt med EmailJS!");
     return NextResponse.json({ message: "E-post sendt!" }, { status: 200 });
   } catch (error) {
     console.error("❌ EmailJS-feil:", error.message || error);

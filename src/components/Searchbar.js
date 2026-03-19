@@ -42,7 +42,6 @@ export default function Searchbar() {
           }, 1000);
         }
       } catch (error) {
-        console.log("Søkeforespørsel feilet: ", error);
         // Vis feilmeldingen etter 1 sekund
         setTimeout(() => {
           setShowError(true);

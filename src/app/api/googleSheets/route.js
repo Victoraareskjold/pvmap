@@ -8,8 +8,6 @@ export async function POST(req) {
     const sheetName =
       site == "null" ? "solarinstallationdashboard" : "vestelektrosol";
 
-    console.log(sheetName);
-
     if (totalPanels < 0) {
       return new Response(
         JSON.stringify({ error: "Total Panels parameter mangler" }),
@@ -75,8 +73,6 @@ export async function POST(req) {
     const valueFromE2 = responseE2.data.values
       ? responseE2.data.values[0][0]
       : null;
-
-    console.log("Verdi hentet fra B2:", valueFromB2);
 
     const data = responseB2.data.values;
 
