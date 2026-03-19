@@ -21,8 +21,11 @@ export default function SendModal({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [comment, setComment] = useState("");
   const [checked, setChecked] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  const [selectedEquipment, setSelectedEquipment] = useState("Solcelleanlegg");
 
   const handleNameChange = (e) => setName(e.target.value);
   const handleEmailChange = (e) => setEmail(e.target.value);
@@ -61,6 +64,8 @@ export default function SendModal({
       user_name: name,
       user_phone: phone,
       user_email: email,
+      user_equipment: equipmentChoice,
+      user_comment: comment,
       gclid,
       fbclid,
       utmCampaign,
@@ -111,11 +116,23 @@ export default function SendModal({
     }
   };
 
+  const equipmentChoice = [
+    {
+      label: "Solcelleanlegg",
+      imageUrl: "/icon1.png",
+    },
+    {
+      label: "Batteri",
+      imageUrl: "/icon2.png",
+    },
+    {
+      label: "Solcelleanlegg + Batteri",
+      imageUrl: "/icon3.png",
+    },
+  ];
+
   return (
-    <form
-      onSubmit={handleSend}
-      className="flex flex-col gap-3 bg-white rounded-xl modal z-50 p-4 w-full max-w-md fixed"
-    >
+    <form className="flex flex-col gap-3 bg-white rounded-xl modal z-50 p-6 w-full max-w-md fixed max-h-[90vh] overflow-y-auto">
       <button
         className="absolute top-4 right-4 text-red-500 text-xl"
         type="button"
@@ -123,11 +140,35 @@ export default function SendModal({
       >
         ×
       </button>
-      <p className="text-md w-5/6">
-        Informasjonen du har fylt ut i solkartet, sendes automatisk til oss.
-        Mangler noe, går det fint - vi lager et forslag som passer best for deg.
-        Fyll ut resten nedenfor for et uforpliktende tilbud.
-      </p>
+      <h2 className="text-xl font-bold mb-4">
+        Fyll ut dine detaljer for et uforpliktende tilbud på e-post.
+      </h2>
+
+      <div className="flex flex-row justify-between w-full gap-2">
+        {equipmentChoice.map((choice) => {
+          const isSelected = selectedEquipment === choice.label;
+
+          return (
+            <button
+              type="button"
+              key={choice.label}
+              onClick={() => setSelectedEquipment(choice.label)}
+              className={`p-2 rounded-lg shadow-xl w-full transition border-2
+          ${
+            isSelected
+              ? "border-[#FFC25F] ring-2 ring-[#FFC25F]"
+              : "border-transparent hover:border-gray-300"
+          }`}
+            >
+              <p className="font-medium">{choice.label}</p>
+              <img
+                src={choice.imageUrl}
+                className="mx-auto object-contain py-2"
+              />
+            </button>
+          );
+        })}
+      </div>
 
       <div>
         <label className="block text-sm font-medium">Fullt navn*</label>
@@ -163,16 +204,27 @@ export default function SendModal({
         />
       </div>
 
+      <div>
+        <label className="block text-sm font-medium">Kommentar</label>
+        <textarea
+          type="text"
+          className="w-full border rounded-md px-3 py-2 bg-zinc-200"
+          value={comment}
+          placeholder="Kommentar"
+          onChange={(e) => setComment(e.target.value)}
+        />
+      </div>
+
       <div className="flex flex-row gap-2">
         <input type="checkbox" checked={checked} onChange={handleCheckChange} />
-        <p>
+        <p className="text-sx">
           Jeg godtar at informasjonen brukes kun til å sende tilbud på
           solcellepaneler via e-post og eventuelt kontakte meg på mobil.
         </p>
       </div>
       <button
         className="bg-red-500 self-center !w-full py-1 rounded-md text-sm funky !mt-0"
-        type="submit"
+        onClick={handleSend}
         disabled={loading}
       >
         {loading ? "Sender..." : "Jeg ønsker uforpliktende tilbud"}

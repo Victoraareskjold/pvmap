@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 import { createSupabaseAdminClient } from "../../../../../utils/supabase/client";
 
 export async function POST(req) {
@@ -11,6 +10,8 @@ export async function POST(req) {
       user_name,
       user_phone,
       user_email,
+      user_equipment,
+      user_comment,
       gclid,
       fbclid,
       utmCampaign,
@@ -60,6 +61,12 @@ export async function POST(req) {
         status: 6,
         email: user_email,
         note: `
+        Comment:
+        ${user_comment}
+
+        Equipment:
+        ${user_equipment}
+        
         Tracking:
         gclid: ${gclid || ""}
         fbclid: ${fbclid || ""}

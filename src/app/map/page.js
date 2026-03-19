@@ -851,7 +851,7 @@ export default function Map() {
         </ul>
         <button
           className="bg-red-500 self-center w-48 py-1 rounded-md text-sm funky mb-12"
-          onClick={toggleModal} // Open the modal
+          onClick={toggleModal}
           disabled={isLoading || totalPanels < minPanels}
         >
           Jeg ønsker uforpliktende tilbud
