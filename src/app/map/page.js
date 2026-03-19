@@ -94,10 +94,6 @@ export default function Map() {
     setSelectedElPrice(value);
   };
 
-  const toggleModal = () => {
-    setShowModal(!showModal);
-  };
-
   const handleCloseModal = () => {
     setOpenModal(null);
   };
@@ -782,7 +778,7 @@ export default function Map() {
         </ul>
         <button
           className="bg-red-500 self-center w-48 py-1 rounded-md text-sm funky mb-12"
-          onClick={toggleModal}
+          onClick={() => setShowModal(!showModal)}
           disabled={isLoading || totalPanels < minPanels}
         >
           Jeg ønsker uforpliktende tilbud
@@ -804,7 +800,7 @@ export default function Map() {
             yearlyCost={yearlyCost}
             yearlyCost2={yearlyCost2}
             address={address}
-            toggleModal={toggleModal}
+            toggleModal={() => setShowModal(!showModal)}
             site={site}
             desiredKWh={desiredKWh}
             coveragePercentage={coveragePercentage}
