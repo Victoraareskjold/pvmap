@@ -71,19 +71,17 @@ export default function SendModal({
       yearlyCost: Number(yearlyCost?.toFixed(0)) || "Ikke tilgjengelig",
       yearlyCost2: Number(yearlyCost2?.toFixed(0)) || "Ikke tilgjengelig",
       yearlyProd: Number(yearlyProd?.toFixed(0)) || "Ikke tilgjengelig",
-      checkedRoofData: checkedRoofData
-        .map(
-          (r) =>
-            `TakID: ${r.roofId}, Justerte paneler: ${
-              r.adjustedPanelCount
-            }, Max paneler: ${r.maxPanels}, Retning: ${
-              r.direction
-            }, Vinkel: ${r.angle.toFixed(2)}`,
-        )
-        .join("\n"),
+      checkedRoofData: checkedRoofData || [],
       desiredKWh,
       coveragePercentage,
     };
+
+    const checkedRoofDataFormatted = checkedRoofData
+      .map(
+        (r) =>
+          `TakID: ${r.roofId}, Justerte paneler: ${r.adjustedPanelCount}, Max paneler: ${r.maxPanels}, Retning: ${r.direction}, Vinkel: ${r.angle.toFixed(2)}`,
+      )
+      .join("\n");
 
     try {
       if (site === "solarinstallationdashboard") {
@@ -100,7 +98,7 @@ export default function SendModal({
       const res = await emailjs.send(
         process.env.NEXT_PUBLIC_SERVICE_ID,
         process.env.NEXT_PUBLIC_TEMPLATE_ID,
-        payload,
+        { ...payload, checkedRoofData: checkedRoofDataFormatted },
         process.env.NEXT_PUBLIC_PUBLIC_KEY,
       );
       console.log("✅ E-post sendt:", res);
