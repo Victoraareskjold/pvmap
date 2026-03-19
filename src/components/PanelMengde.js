@@ -1,7 +1,7 @@
 export default function PanelMengde({ selectedPanelType, totalPanels }) {
   return (
     <div
-      className="bg-[#fff] rounded-3xl p-4 m-4 mx-auto gap-6 flex flex-col border-2"
+      className="bg-[#fff] rounded-3xl p-4 m-4 mx-auto w-full gap-6 flex flex-col border-2"
       style={{ borderColor: "#FF9D00" }}
     >
       <div className="flex flex-row items-center justify-between mb-4">
