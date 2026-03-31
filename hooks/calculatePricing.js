@@ -2,13 +2,12 @@ const LOAN_ANNUAL_RATE = 0.045; // 4.5% miljølån
 const YEARS = 30;
 
 /**
- * Calculates yearly solar installation costs.
  *
  * @param {object} params
- * @param {number} params.totalPanels       - Number of panels selected
- * @param {number} params.panelPrice        - Unit price per panel (from solarpanels.PRIS)
- * @param {number} params.roofPrice         - Extra cost per panel for roof type (from roof_types.PRIS)
- * @param {number} params.formula           - Installer markup multiplier (from installer_groups.FORMEL)
+ * @param {number} params.totalPanels
+ * @param {number} params.panelPrice
+ * @param {number} params.roofPrice
+ * @param {number} params.formula
  *
  * @returns {{
  *   totalCost: number,       - Total installation cost before spreading
@@ -29,10 +28,12 @@ export function calculatePricing({
 
   const totalCost = (panelPrice + roofPrice) * totalPanels * formula;
 
-  // Direct purchase: spread evenly over 30 years
   const yearlyCostDirect = totalCost / YEARS;
 
-  // Miljølån: standard annuity formula
+  console.log(yearlyCostDirect);
+
+  //rooftype + solarpanel * antallpanerl
+
   const monthlyRate = LOAN_ANNUAL_RATE / 12;
   const months = YEARS * 12;
   const monthlyPayment =

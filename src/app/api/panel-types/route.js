@@ -5,7 +5,9 @@ export async function GET() {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("solarpanels")
-    .select("NAVN, PRIS, WATTAGE")
+    .select(
+      `NAVN, WATTAGE, "0-72", "72-150", "150-300", "300-600", "600-1000", "1000+"`,
+    )
     .order("NAVN");
 
   if (error) {

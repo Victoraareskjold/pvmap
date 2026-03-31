@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 /**
- * Fetches roof types and their prices from /api/roof-types.
  *
  * @returns {{
  *   roofTypes: Array<{ name: string, PRIS: number }>,

@@ -14,6 +14,7 @@ import { useRoofTypes } from "../../../hooks/useRoofTypes";
 import { usePanelTypes } from "../../../hooks/usePanelTypes";
 import { useFormula } from "../../../hooks/useFormula";
 import { calculatePricing } from "../../../hooks/calculatePricing";
+import getPanelPriceByCount from "../../../helpers/getPanelPriceByCount";
 
 // Dynamisk import av kartkomponenten
 const MapComponent = dynamic(() => import("../../components/MapComponent"), {
@@ -240,8 +241,10 @@ export default function Map() {
   useEffect(() => {
     if (!totalPanels || !formula) return;
 
-    const panelPrice =
-      panelTypes.find((p) => p.NAVN === selectedPanelType)?.PRIS ?? 0;
+    const selectedPanel = panelTypes.find((p) => p.NAVN === selectedPanelType);
+    const panelPrice = selectedPanel
+      ? getPanelPriceByCount(selectedPanel, totalPanels)
+      : 0;
     const roofPrice =
       roofTypes.find((r) => r.name === selectedRoofType)?.PRIS ?? 0;
 

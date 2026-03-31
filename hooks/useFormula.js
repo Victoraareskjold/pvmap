@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 /**
- * Fetches the installer markup formula (FORMEL) for a given site.
  *
  * @param {string} site
  * @returns {{

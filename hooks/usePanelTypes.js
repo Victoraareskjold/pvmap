@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 /**
- * Fetches panel types and their prices from /api/panel-types.
  *
  * @returns {{
  *   panelTypes: Array<{ NAVN: string, PRIS: number, WATTAGE: number }>,
