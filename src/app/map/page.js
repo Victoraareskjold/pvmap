@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -12,9 +13,9 @@ import RoofList from "../../components/RoofList";
 import SendModal from "../../components/SendModal";
 import { useRoofTypes } from "../../../hooks/useRoofTypes";
 import { usePanelTypes } from "../../../hooks/usePanelTypes";
-import { useFormula } from "../../../hooks/useFormula";
 import { calculatePricing } from "../../../hooks/calculatePricing";
-import getPanelPriceByCount from "../../../helpers/getPanelPriceByCount";
+import getPriceByCount from "../../../helpers/getPriceByCount";
+import { usePricingData } from "../../../hooks/usePricingData";
 
 // Dynamisk import av kartkomponenten
 const MapComponent = dynamic(() => import("../../components/MapComponent"), {
@@ -33,7 +34,11 @@ export default function Map() {
 
   const { roofTypes } = useRoofTypes();
   const { panelTypes } = usePanelTypes();
-  const { formula } = useFormula(site);
+  const pricingData = usePricingData(site);
+
+  const installer = pricingData?.installer;
+  const commission = pricingData?.commission;
+  const formula = pricingData?.installer?.FORMEL;
 
   const [selectedRoofType, setSelectedRoofType] = useState("");
   const [selectedPanelType, setSelectedPanelType] = useState("");
@@ -239,29 +244,35 @@ export default function Map() {
   }, [adjustedPanelCounts, isChecked, combinedData, selectedElPrice]);
 
   useEffect(() => {
-    if (!totalPanels || !formula) return;
+    if (!totalPanels || !pricingData) return;
 
     const selectedPanel = panelTypes.find((p) => p.NAVN === selectedPanelType);
-    const panelPrice = selectedPanel
-      ? getPanelPriceByCount(selectedPanel, totalPanels)
-      : 0;
+
+    const panelPrice = getPriceByCount(selectedPanel, totalPanels);
+
     const roofPrice =
       roofTypes.find((r) => r.name === selectedRoofType)?.PRIS ?? 0;
+
+    const installerPrice = getPriceByCount(installer, totalPanels);
+    const commissionRate = getPriceByCount(commission, totalPanels);
 
     const { yearlyCostDirect, yearlyCostLoan } = calculatePricing({
       totalPanels,
       panelPrice,
       roofPrice,
+      installerPrice,
+      commissionRate,
       formula,
     });
 
     setYearlyCost(yearlyCostDirect);
     setYearlyCost2(yearlyCostLoan);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     totalPanels,
     selectedPanelType,
     selectedRoofType,
-    formula,
+    pricingData,
     panelTypes,
     roofTypes,
   ]);
