@@ -2,8 +2,8 @@ export function calculatePricing({
   totalPanels,
   panelPrice,
   roofPrice,
-  installerPrice,
-  commissionRate = 0,
+  installerPrice = 0,
+  commissionRate = 1,
   formula = 1,
 }) {
   if (!totalPanels || !panelPrice) {
@@ -20,7 +20,7 @@ export function calculatePricing({
   const totalBeforeVAT = withInstaller + commissionRate;
 
   // Apply formula multiplier
-  const totalCost = totalBeforeVAT * formula * 1.25; // 1.25 for mva
+  const totalCost = (totalBeforeVAT + formula) * 1.25; // 1.25 for mva
 
   // Yearly cost (direct)
   const yearlyCostDirect = totalCost / 30;
