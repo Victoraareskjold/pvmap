@@ -821,7 +821,6 @@ export default function Map() {
           />
         </>
       )}
-      {/* Map */}
     </div>
   );
 }
