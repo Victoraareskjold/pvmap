@@ -5,6 +5,16 @@ export async function POST(req) {
     const body = await req.json();
     const { totalPanels, selectedRoofType, selectedPanelType, site } = body;
 
+    if (site === "solarinstallationdashboard") {
+      return new Response(
+        JSON.stringify({ data: [], valueFromB2: null, valueFromE2: null }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
     const sheetName =
       site == "null" ? "solarinstallationdashboard" : "vestelektrosol";
 

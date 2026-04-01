@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -11,11 +10,6 @@ import PanelMengde from "../../components/PanelMengde";
 import PriceEstimator from "../../components/PriceEstimator";
 import RoofList from "../../components/RoofList";
 import SendModal from "../../components/SendModal";
-import { useRoofTypes } from "../../../hooks/useRoofTypes";
-import { usePanelTypes } from "../../../hooks/usePanelTypes";
-import { calculatePricing } from "../../../hooks/calculatePricing";
-import getPriceByCount from "../../../helpers/getPriceByCount";
-import { usePricingData } from "../../../hooks/usePricingData";
 
 // Dynamisk import av kartkomponenten
 const MapComponent = dynamic(() => import("../../components/MapComponent"), {
@@ -29,26 +23,30 @@ export default function Map() {
   const address = searchParams.get("address");
   const addressId = searchParams.get("addressId");
   const site = searchParams.get("site");
+  const preAdr = searchParams.get("preAdr");
   const router = useRouter();
   const pricesRef = useRef(null);
 
-  const { roofTypes } = useRoofTypes();
-  const { panelTypes } = usePanelTypes();
-  const pricingData = usePricingData(site);
-
-  const installer = pricingData?.installer;
-  const commission = pricingData?.commission;
-  const formula = pricingData?.installer?.FORMEL;
-
-  const [selectedRoofType, setSelectedRoofType] = useState("");
-  const [selectedPanelType, setSelectedPanelType] = useState("");
-
+  const [selectedRoofType, setSelectedRoofType] = useState(
+    "Takstein (Dobbelkrummet)",
+  );
+  const [selectedPanelType, setSelectedPanelType] = useState(
+    "Premium all black, 430W",
+  );
   const [selectedElPrice, setSelectedElPrice] = useState(1.5);
 
   const [combinedData, setCombinedData] = useState([]);
+  const [sheetData, setSheetData] = useState(null);
+  const [modalData, setModalData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [roofs, setRoofs] = useState([]);
   const [adjustedPanelCounts, setAdjustedPanelCounts] = useState({});
+
+  const totalPanels = Object.values(adjustedPanelCounts).reduce(
+    (total, count) => total + count,
+    0,
+  );
 
   const [visibleRoofs, setVisibleRoofs] = useState([]);
 
@@ -62,31 +60,9 @@ export default function Map() {
   const [apiKey, setApiKey] = useState(null);
 
   const [showModal, setShowModal] = useState(false);
-
-  const [desiredKWh, setDesiredKWh] = useState("");
-  const [coveragePercentage, setCoveragePercentage] = useState(40);
-  const [errors, setErrors] = useState({ kWh: "", percentage: "" });
-  const [activeTooltip, setActiveTooltip] = useState(null);
-  const [checkedRoofData, setCheckedRoofData] = useState({});
+  const [openModal, setOpenModal] = useState(null);
 
   const minPanels = 6;
-
-  const totalPanels = Object.values(adjustedPanelCounts).reduce(
-    (total, count) => total + count,
-    0,
-  );
-
-  useEffect(() => {
-    if (panelTypes.length > 0) {
-      setSelectedPanelType(panelTypes[0].NAVN);
-    }
-  }, [panelTypes]);
-
-  useEffect(() => {
-    if (roofTypes.length > 0) {
-      setSelectedRoofType(roofTypes[0].name);
-    }
-  }, [roofTypes]);
 
   const handleRoofTypeChange = (value) => {
     setSelectedRoofType(value);
@@ -98,6 +74,14 @@ export default function Map() {
 
   const handleSelectedElPrice = (value) => {
     setSelectedElPrice(value);
+  };
+
+  const toggleModal = () => {
+    setShowModal(!showModal);
+  };
+
+  const handleOpenModal = (modalName) => {
+    setOpenModal(modalName);
   };
 
   const handleCloseModal = () => {
@@ -164,17 +148,11 @@ export default function Map() {
         const pvPromises = solarData.map(async (data) => {
           if (data.panels.panelCount <= minPanels) return { ...data, pv: null };
 
-          const selectedPanel = panelTypes.find(
-            (p) => p.NAVN === selectedPanelType,
-          );
-          const panelWattage = selectedPanel?.WATTAGE ?? 430;
-
           const apiUrl = `/api/pvgis?lat=${lat}&lng=${lng}&panelCount=${
             data.panels.panelCount
           }&aspect=${data.direction - 179}&angle=${
             data.angle + 1
-          }&panelWattage=${panelWattage}`;
-
+          }&panelWattage=${getNumbers(selectedPanelType)}`;
           try {
             const response = await fetch(apiUrl);
             if (!response.ok) throw new Error("Feil i PVGIS API");
@@ -227,7 +205,7 @@ export default function Map() {
       }
     };
     fetchData();
-  }, [selectedPanelType, addressId, lat, lng, panelTypes]);
+  }, [selectedPanelType, addressId, lat, lng]);
 
   useEffect(() => {
     const totalProduction = combinedData.reduce((sum, roof) => {
@@ -244,38 +222,50 @@ export default function Map() {
   }, [adjustedPanelCounts, isChecked, combinedData, selectedElPrice]);
 
   useEffect(() => {
-    if (!totalPanels || !pricingData) return;
+    const fetchGoogleSheetsData = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch("/api/googleSheets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            totalPanels,
+            selectedRoofType,
+            selectedPanelType,
+            site,
+          }),
+        });
 
-    const selectedPanel = panelTypes.find((p) => p.NAVN === selectedPanelType);
+        if (!response.ok) {
+          console.error(`Feil under henting av data: ${response.status}`);
+          return;
+        }
 
-    const panelPrice = getPriceByCount(selectedPanel, totalPanels);
+        const data = await response.json();
+        //console.log("Google Sheets API response:", data); // Log API response
 
-    const roofPrice =
-      roofTypes.find((r) => r.name === selectedRoofType)?.PRIS ?? 0;
+        setYearlyCost(parseFloat(data.valueFromB2 || 0));
+        setYearlyCost2(parseFloat(data.valueFromE2 || 0));
+      } catch (error) {
+        console.error("Feil under henting av data fra Google Sheets:", error);
+      }
+      setIsLoading(false);
+    };
 
-    const installerPrice = getPriceByCount(installer, totalPanels);
-    const commissionRate = getPriceByCount(commission, totalPanels);
+    const debounceTimeout = setTimeout(() => {
+      if (totalPanels > 0) {
+        //console.log("🔍 Henter årlig kostnad for antall paneler:", totalPanels);
+        fetchGoogleSheetsData();
+      } else {
+        console.warn(
+          "⚠️ Ingen paneler valgt. Årlig kostnad kan ikke beregnes.",
+        );
+      }
+    }, 500); // 500ms debounce
 
-    const { yearlyCostDirect, yearlyCostLoan } = calculatePricing({
-      totalPanels,
-      panelPrice,
-      roofPrice,
-      installerPrice,
-      commissionRate,
-      formula,
-    });
-
-    setYearlyCost(yearlyCostDirect);
-    setYearlyCost2(yearlyCostLoan);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    totalPanels,
-    selectedPanelType,
-    selectedRoofType,
-    pricingData,
-    panelTypes,
-    roofTypes,
-  ]);
+    // Cleanup: Fjern tidligere timeout hvis `totalPanels` oppdateres før 500ms
+    return () => clearTimeout(debounceTimeout);
+  }, [totalPanels, selectedRoofType, selectedPanelType, site]);
 
   const evaluateDirection = (direction) => {
     const normalizedDirection = direction % 360;
@@ -333,6 +323,21 @@ export default function Map() {
     setPotentialSaving(totalSaving);
   }, [yearlyProd, selectedElPrice]);
 
+  const getNumbers = (str) => {
+    let matches = str.match(/(\d+)/);
+
+    if (matches) {
+      return matches[0];
+    }
+  };
+
+  const [desiredKWh, setDesiredKWh] = useState(""); // State for strømforbruk
+  const [coveragePercentage, setCoveragePercentage] = useState(40); // State for prosent
+  const [errors, setErrors] = useState({ kWh: "", percentage: "" }); // State for feil
+  const [roofDetails, setRoofDetails] = useState({});
+  const [activeTooltip, setActiveTooltip] = useState(null);
+  const [checkedRoofData, setCheckedRoofData] = useState({});
+
   const toggleTooltip = (tooltipKey) => {
     setActiveTooltip((prev) => (prev === tooltipKey ? null : tooltipKey));
   };
@@ -353,25 +358,38 @@ export default function Map() {
   const handleCalculatePanels = (adjustedKWh = null) => {
     const newErrors = { kWh: "", percentage: "", calculation: "" };
 
+    // Use adjustedKWh if provided, otherwise use desiredKWh
     const effectiveKWh = adjustedKWh ?? desiredKWh;
+
+    console.log("Starting calculation...");
+    console.log("Effective KWh:", effectiveKWh);
+    console.log("Coverage Percentage:", coveragePercentage);
 
     if (!effectiveKWh || effectiveKWh <= 0 || isNaN(effectiveKWh)) {
       newErrors.kWh = "Skriv inn ønsket årlig strømforbruk (kWh).";
     }
 
+    console.log("Validation Errors:", newErrors);
+
     setErrors(newErrors);
     if (newErrors.kWh || newErrors.percentage) return;
 
     const energyRequirement = (effectiveKWh * coveragePercentage) / 100;
+
+    console.log("Energy Requirement (kWh):", energyRequirement);
+
     const maxCoverage = combinedData.reduce((sum, roof) => {
       return sum + (roof.efficiencyPerPanel || 0) * roof.panels.panelCount;
     }, 0);
+
+    console.log("Max Coverage (kWh):", maxCoverage);
 
     if (energyRequirement > maxCoverage) {
       const adjustedKWhValue = Math.floor(
         (maxCoverage / coveragePercentage) * 100,
       );
 
+      // Set the error message
       setErrors((prev) => ({
         ...prev,
         calculation: `Maksimal dekning er ${adjustedKWhValue.toLocaleString(
@@ -393,6 +411,8 @@ export default function Map() {
     const updatedIsChecked = {};
     const updatedVisibleRoofs = [];
 
+    console.log("Starting roof sorting and panel allocation...");
+
     const sortedRoofs = [...combinedData].sort(
       (a, b) => b.efficiencyPerPanel - a.efficiencyPerPanel,
     );
@@ -410,8 +430,15 @@ export default function Map() {
         updatedPanelCounts[roof.id] = panelsNeeded;
         updatedVisibleRoofs.push(roof.id);
         remainingEnergy -= panelsNeeded * (roof.efficiencyPerPanel || 0);
+
+        console.log(`Allocating panels to roof ID ${roof.id}`);
+        console.log("Panels Needed:", panelsNeeded);
+        console.log("Remaining Energy (kWh):", remainingEnergy);
       }
     }
+
+    console.log("Final Panel Counts:", updatedPanelCounts);
+    console.log("Visible Roofs:", updatedVisibleRoofs);
 
     setAdjustedPanelCounts(updatedPanelCounts);
     setIsChecked(updatedIsChecked);
@@ -420,6 +447,8 @@ export default function Map() {
     if (window.innerWidth < 768) {
       pricesRef.current.scrollIntoView({ behavior: "smooth" });
     }
+
+    console.log("Calculation complete.");
   };
 
   useEffect(() => {
@@ -434,7 +463,19 @@ export default function Map() {
         angle: roof.angle,
       }));
 
+    //console.log("✅ Updated Checked Roof Data:", updatedCheckedRoofData);
     setCheckedRoofData(updatedCheckedRoofData);
+
+    setModalData({
+      checkedRoofData: updatedCheckedRoofData,
+      totalPanels,
+      selectedElPrice,
+      selectedRoofType,
+      selectedPanelType,
+      yearlyProd,
+      yearlyCost,
+      address,
+    });
   }, [
     isChecked,
     adjustedPanelCounts,
@@ -447,6 +488,10 @@ export default function Map() {
     yearlyCost,
     address,
   ]);
+
+  const routeBack = () => {
+    router.push("/");
+  };
 
   useEffect(() => {
     const sortedData = combinedData.filter(
@@ -486,7 +531,7 @@ export default function Map() {
             <h1 className="text-xl">Adresse: {address}</h1>
             <button
               className="bg-black text-white rounded-full text-sm py-1.5 px-4"
-              onClick={() => router.push("/")}
+              onClick={routeBack}
             >
               Nytt søk
             </button>
@@ -496,12 +541,26 @@ export default function Map() {
           <div className="flex flex-col gap-6">
             <SelectOption
               title="Din taktype:"
-              options={roofTypes.map((r) => r.name)}
+              options={[
+                "Takstein (Dobbelkrummet)",
+                "Takstein (Enkeltkrummet)",
+                "Glassert takstein",
+                "Flat takstein",
+                "Shingel/Takpapp",
+                "Trapes",
+                "Flatt tak",
+                "Integrert i taket",
+                "Decra",
+                "Bølgeblikk",
+              ]}
               onSelect={handleRoofTypeChange}
             />
             <SelectOption
               title="Paneltype:"
-              options={panelTypes.map((p) => p.NAVN)}
+              options={[
+                "Premium all black, 430W",
+                "Performance all black, 460W Bifacial",
+              ]}
               onSelect={handlePanelTypeChange}
             />
           </div>
@@ -792,7 +851,7 @@ export default function Map() {
         </ul>
         <button
           className="bg-red-500 self-center w-48 py-1 rounded-md text-sm funky mb-12"
-          onClick={() => setShowModal(!showModal)}
+          onClick={toggleModal}
           disabled={isLoading || totalPanels < minPanels}
         >
           Jeg ønsker uforpliktende tilbud
@@ -814,13 +873,14 @@ export default function Map() {
             yearlyCost={yearlyCost}
             yearlyCost2={yearlyCost2}
             address={address}
-            toggleModal={() => setShowModal(!showModal)}
+            toggleModal={toggleModal}
             site={site}
             desiredKWh={desiredKWh}
             coveragePercentage={coveragePercentage}
           />
         </>
       )}
+      {/* Map */}
     </div>
   );
 }
