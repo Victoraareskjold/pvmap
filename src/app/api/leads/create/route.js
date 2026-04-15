@@ -60,7 +60,7 @@ export async function POST(req) {
         phone: user_phone,
         status: 6,
         email: user_email,
-        lead_source: gclid ? "google" : fclid ? "facebook" : null,
+        lead_source: gclid ? "google" : fbclid ? "facebook" : null,
         note: `
         Comment:
         ${user_comment}
