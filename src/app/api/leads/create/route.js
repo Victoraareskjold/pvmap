@@ -38,7 +38,7 @@ export async function POST(req) {
     const { data: installerGroup, error: installerError } = await client
       .from("installer_groups")
       .select("id, team_id")
-      .eq("site", site)
+      .eq("site", site.toLowerCase())
       .single();
 
     if (installerError || !installerGroup) {

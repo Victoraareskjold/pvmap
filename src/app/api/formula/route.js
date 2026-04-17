@@ -11,7 +11,7 @@ export async function GET(req) {
     .select(
       `FORMEL, "0-72", "72-150", "150-300", "300-600", "600-1000", "1000+"`,
     )
-    .eq("site", site)
+    .eq("site", site.toLowerCase())
     .single();
 
   if (error) {
