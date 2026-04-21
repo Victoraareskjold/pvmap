@@ -2,6 +2,7 @@
 import { useState } from "react";
 import emailjs from "@emailjs/browser";
 import { getLocalStorage } from "../../utils/localstorage";
+import { useSearchParams } from "next/navigation";
 
 export default function SendModal({
   checkedRoofData,
@@ -18,6 +19,8 @@ export default function SendModal({
   desiredKWh,
   coveragePercentage,
 }) {
+  const searchParams = useSearchParams();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -36,6 +39,12 @@ export default function SendModal({
     e.preventDefault();
     setLoading(true);
 
+    const gclid = searchParams.get("gclid") ?? getLocalStorage("gclid") ?? "";
+    const fbclid =
+      searchParams.get("fbclid") ?? getLocalStorage("fbclid") ?? "";
+    const utmCampaign =
+      searchParams.get("utm_campaign") ?? getLocalStorage("utmCampaign") ?? "";
+
     if (site !== "solarinstallationdashboard") {
       if (checkedRoofData.length === 0) {
         alert("Velg minst 6 paneler!");
@@ -52,10 +61,6 @@ export default function SendModal({
         return;
       }
     }
-
-    const gclid = getLocalStorage("gclid") ?? "";
-    const fbclid = getLocalStorage("fbclid") ?? "";
-    const utmCampaign = getLocalStorage("utmCampaign") ?? "";
 
     const payload = {
       site,
