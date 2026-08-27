@@ -1,143 +1,220 @@
-import React, { useEffect, useState } from "react";
+"use client";
 
+import React, { useState } from "react";
+import { compassLabel } from "@/lib/roofs";
+
+const DIRECTIONS = [
+  { label: "N", deg: 0 },
+  { label: "NØ", deg: 45 },
+  { label: "Ø", deg: 90 },
+  { label: "SØ", deg: 135 },
+  { label: "S", deg: 180 },
+  { label: "SV", deg: 225 },
+  { label: "V", deg: 270 },
+  { label: "NV", deg: 315 },
+];
+
+const nb = (n) => new Intl.NumberFormat("nb-NO").format(Math.round(n));
+
+/**
+ * One list for both sources. Roofs from Google come with a fixed geometry —
+ * pitch and direction are measured, so they are shown, not edited. Roofs the
+ * user drew are missing exactly those two, so there they are inputs.
+ */
 function RoofList({
   roofs,
-  visibleRoofs,
-  toggleRoof,
-  evaluateDirection,
-  isChecked,
-  adjustedPanelCounts,
-  setAdjustedPanelCounts,
+  checked,
+  panelCounts,
   minPanels,
+  onToggle,
+  onCount,
+  onUpdate,
+  onDelete,
 }) {
-  const [activeTooltip, setActiveTooltip] = useState(null);
-  const [expanded, setExpanded] = useState(true); // State for toggle interaction
-
-  const handleToggleTooltip = (id) => {
-    setActiveTooltip((prev) => (prev === id ? null : id));
-  };
-
-  useEffect(() => {
-    const handleCloseTooltips = (e) => {
-      if (!e.target.closest(".tooltip-icon-slider")) {
-        setActiveTooltip(null);
-      }
-    };
-
-    document.addEventListener("click", handleCloseTooltips);
-    return () => {
-      document.removeEventListener("click", handleCloseTooltips);
-    };
-  }, []);
-
-  // Sorter takflater etter effektivitet
-  const sortedRoofs = roofs
-    .filter((roof) => visibleRoofs.includes(roof.id))
-    .sort((a, b) => (b.efficiencyPerPanel || 0) - (a.efficiencyPerPanel || 0));
-
-  const visibleRoofCount = expanded ? sortedRoofs.length : 2;
+  const [openInfo, setOpenInfo] = useState(null);
 
   return (
-    <ul>
-      {sortedRoofs.slice(0, visibleRoofCount).map((roof, index) => {
-        const adjustedCount =
-          adjustedPanelCounts[roof.id] ?? roof.panels.panelCount;
+    <ul className="flex flex-col gap-3">
+      {roofs.map((roof, i) => {
+        const on = !!checked[roof.id];
+        const count = panelCounts[roof.id] ?? roof.maxPanels;
+        const production = (roof.efficiencyPerPanel || 0) * count;
+        const tooSmall = roof.maxPanels < minPanels;
 
         return (
           <li
             key={roof.id}
-            className="flex flex-col gap-4 py-4 border-b border-gray-300 px-4"
+            className="card overflow-hidden"
+            style={{ opacity: tooSmall ? 0.6 : 1 }}
           >
-            {/* Hovedoverskrift for takflate */}
-            <div className="flex flex-row gap-4 cursor-pointer">
+            <div className="flex items-start gap-3 p-4">
               <input
                 type="checkbox"
-                className="scale-150"
-                checked={isChecked[roof.id]}
-                onChange={(e) => toggleRoof(roof.id, e.target.checked)}
-                id={`roof-checkbox-${roof.id}`}
+                id={`roof-${roof.id}`}
+                className="mt-1 h-4 w-4 accent-[var(--accent)]"
+                checked={on}
+                disabled={tooSmall}
+                onChange={(e) => onToggle(roof.id, e.target.checked)}
               />
-              <label
-                htmlFor={`roof-checkbox-${roof.id}`}
-                className="shrink-0 self-center text-md font-medium"
-              >
-                Tak {index + 1}:{" "}
-                <span className="italic font-normal">Velg antall paneler</span>
-              </label>
-            </div>
 
-            {/* Detaljer for valgt takflate */}
-            {isChecked[roof.id] && (
-              <div className="flex flex-row items-center gap-4 ml-7">
-                <div className="relative">
-                  <button
-                    className="tooltip-icon-slider"
-                    onClick={() => handleToggleTooltip(roof.id)}
-                    aria-expanded={activeTooltip === roof.id}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ background: roof.rating.color }}
+                  />
+                  <label
+                    htmlFor={`roof-${roof.id}`}
+                    className="cursor-pointer text-sm font-semibold"
                   >
-                    i
-                  </button>
-                  {activeTooltip === roof.id && (
-                    <div
-                      className="absolute left-0 bottom-full mb-2 p-2 w-64 text-sm bg-black text-white rounded-md shadow-lg"
-                      role="tooltip"
-                    >
-                      <p>
-                        <strong>Område:</strong> {roof.area.toFixed(2)} m²
-                      </p>
-                      <p>
-                        <strong>Retning:</strong>{" "}
-                        {evaluateDirection(roof.direction)}
-                      </p>
-                      <p>
-                        <strong>Helning:</strong> {roof.angle}°
-                      </p>
-                      <p>
-                        <strong>Effektivitet:</strong>{" "}
-                        {roof.efficiencyPerPanel?.toFixed(2)} kWh/panel
-                      </p>
-                    </div>
-                  )}
+                    Tak {i + 1}
+                  </label>
+                  <span className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                    {compassLabel(roof.direction)} · {Math.round(roof.angle)}°
+                    helning · {nb(roof.area)} m²
+                  </span>
+                  <span className="tag">{roof.rating.label}</span>
                 </div>
 
-                {/* Skyveknapp for antall paneler */}
-                <input
-                  type="range"
-                  min={minPanels}
-                  max={roof.panels.panelCount}
-                  className="w-full sliderStyling self-center"
-                  value={adjustedCount}
-                  onChange={(e) => {
-                    const newValue = Number(e.target.value);
-                    setAdjustedPanelCounts((prev) => ({
-                      ...prev,
-                      [roof.id]: newValue,
-                    }));
-                  }}
-                  aria-label={`Antall paneler for tak ${index + 1}`}
-                />
-                <p className="border-2 border-orange-500 p-1 rounded-md text-black shrink-0 min-w-20 text-center">
-                  {adjustedCount} paneler
+                <p className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
+                  {tooSmall
+                    ? `For liten flate — det er bare plass til ${roof.maxPanels} paneler.`
+                    : on
+                      ? `${count} av ${roof.maxPanels} paneler · ${
+                          roof.efficiencyPerPanel
+                            ? `${nb(production)} kWh/år`
+                            : "beregner produksjon…"
+                        }`
+                      : `Plass til ${roof.maxPanels} paneler`}
                 </p>
+              </div>
+
+              {roof.source === "drawn" && (
+                <button
+                  onClick={() => onDelete(roof.id)}
+                  title="Slett takflate"
+                  className="px-1 text-lg leading-none"
+                  style={{ color: "var(--ink-soft)" }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {on && !tooSmall && (
+              <div
+                className="flex flex-col gap-4 border-t px-4 py-4"
+                style={{ borderColor: "var(--line)" }}
+              >
+                {/* Antall paneler */}
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="hint-btn"
+                      onClick={() =>
+                        setOpenInfo((p) => (p === roof.id ? null : roof.id))
+                      }
+                    >
+                      i
+                    </button>
+                    {openInfo === roof.id && (
+                      <div className="hint-bubble">
+                        <p>Areal: {nb(roof.area)} m²</p>
+                        <p>
+                          Retning: {compassLabel(roof.direction)} (
+                          {Math.round(roof.direction)}°)
+                        </p>
+                        <p>Helning: {Math.round(roof.angle)}°</p>
+                        <p>
+                          Produksjon:{" "}
+                          {roof.efficiencyPerPanel
+                            ? `${roof.efficiencyPerPanel.toFixed(0)} kWh per panel`
+                            : "beregnes"}
+                        </p>
+                        {roof.source === "google" && (
+                          <p className="mt-1 opacity-70">
+                            Geometrien er målt av Googles takanalyse.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <input
+                    type="range"
+                    min={Math.min(minPanels, roof.maxPanels)}
+                    max={roof.maxPanels}
+                    value={count}
+                    onChange={(e) => onCount(roof.id, Number(e.target.value))}
+                  />
+                  <span
+                    className="shrink-0 rounded-md px-2 py-1 text-center text-sm font-semibold"
+                    style={{
+                      background: "var(--accent-soft)",
+                      color: "var(--accent-dark)",
+                      minWidth: "5.5rem",
+                    }}
+                  >
+                    {count} paneler
+                  </span>
+                </div>
+
+                {/* Retning og helning settes bare for tegnede flater */}
+                {roof.source === "drawn" && (
+                  <>
+                    <div className="flex flex-col gap-1.5">
+                      <p className="card-title">Himmelretning</p>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {DIRECTIONS.map(({ label, deg }) => {
+                          const active = roof.direction === deg;
+                          return (
+                            <button
+                              key={label}
+                              onClick={() => onUpdate(roof.id, { direction: deg })}
+                              className="rounded-lg border py-1.5 text-sm font-medium transition-colors"
+                              style={{
+                                background: active ? "var(--accent)" : "#fff",
+                                color: active ? "#3b2400" : "var(--ink)",
+                                borderColor: active
+                                  ? "var(--accent-dark)"
+                                  : "var(--line)",
+                              }}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <p className="card-title">Helning: {roof.angle}°</p>
+                      <input
+                        type="range"
+                        min={0}
+                        max={60}
+                        value={roof.angle}
+                        onChange={(e) =>
+                          onUpdate(roof.id, { angle: Number(e.target.value) })
+                        }
+                      />
+                      <div
+                        className="flex justify-between text-xs"
+                        style={{ color: "var(--ink-soft)" }}
+                      >
+                        <span>0° flatt</span>
+                        <span>30°</span>
+                        <span>60° bratt</span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </li>
         );
       })}
-      {/* Toggle interaction */}
-      {sortedRoofs.length > 2 && (
-        <div className="text-center mt-4 flex flex-col items-center">
-          <span
-            className="mt-1 cursor-pointer"
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded ? "ᐱ" : "ᐯ"}
-          </span>
-          <button className="text-black-600 text-sm mt-2" disabled>
-            {expanded ? "Se mindre" : "Se mer"}
-          </button>
-        </div>
-      )}
     </ul>
   );
 }

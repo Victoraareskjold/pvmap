@@ -137,19 +137,21 @@ export default function SendModal({
   ];
 
   return (
-    <form className="flex flex-col gap-3 bg-white rounded-xl modal z-50 p-6 w-full max-w-md fixed max-h-[90vh] overflow-y-auto">
+    <form className="card modal z-50 flex max-h-[90vh] w-[min(28rem,92vw)] flex-col gap-4 overflow-y-auto p-6">
       <button
-        className="absolute top-4 right-4 text-red-500 text-xl"
+        className="absolute right-4 top-4 text-2xl leading-none"
+        style={{ color: "var(--ink-soft)" }}
         type="button"
         onClick={toggleModal}
       >
         ×
       </button>
-      <h2 className="text-xl font-bold mb-4">
-        Fyll ut dine detaljer for et uforpliktende tilbud på e-post.
+
+      <h2 className="pr-8 text-xl font-semibold">
+        Få et uforpliktende tilbud på e-post
       </h2>
 
-      <div className="flex flex-row justify-between w-full gap-2">
+      <div className="flex w-full flex-row gap-2">
         {equipmentChoice.map((choice) => {
           const isSelected = selectedEquipment === choice.label;
 
@@ -158,87 +160,84 @@ export default function SendModal({
               type="button"
               key={choice.label}
               onClick={() => setSelectedEquipment(choice.label)}
-              className={`p-2 rounded-lg shadow-xl w-full transition border-2
-          ${
-            isSelected
-              ? "border-[#FFC25F] ring-2 ring-[#FFC25F]"
-              : "border-transparent hover:border-gray-300"
-          }`}
+              className="flex w-full flex-col items-center gap-1 rounded-xl border p-2 text-sm transition"
+              style={{
+                borderColor: isSelected ? "var(--accent)" : "var(--line)",
+                background: isSelected ? "var(--accent-soft)" : "var(--surface)",
+              }}
             >
-              <p className="font-medium">{choice.label}</p>
-              <img
-                src={choice.imageUrl}
-                className="mx-auto object-contain py-2"
-              />
+              <img src={choice.imageUrl} className="h-10 object-contain" alt="" />
+              <span className="font-medium leading-tight">{choice.label}</span>
             </button>
           );
         })}
       </div>
 
-      <div>
-        <label className="block text-sm font-medium">Fullt navn*</label>
+      <label className="flex flex-col gap-1.5">
+        <span className="card-title">Fullt navn*</span>
         <input
-          className="w-full border rounded-md px-3 py-2 bg-zinc-200"
+          className="field"
           placeholder="Fornavn Etternavn"
           value={name}
           onChange={handleNameChange}
           required
         />
-      </div>
+      </label>
 
-      <div>
-        <label className="block text-sm font-medium">Telefon*</label>
+      <label className="flex flex-col gap-1.5">
+        <span className="card-title">Telefon*</span>
         <input
-          className="w-full border rounded-md px-3 py-2 bg-zinc-200"
+          className="field"
           placeholder="Telefonnummer"
           value={phone}
           onChange={handlePhoneChange}
           required
         />
-      </div>
+      </label>
 
-      <div>
-        <label className="block text-sm font-medium">E-post*</label>
+      <label className="flex flex-col gap-1.5">
+        <span className="card-title">E-post*</span>
         <input
-          className="w-full border rounded-md px-3 py-2 bg-zinc-200"
+          className="field"
           type="email"
-          placeholder="Din E-postaddresse"
+          placeholder="din@epost.no"
           value={email}
           onChange={handleEmailChange}
           required
         />
-      </div>
+      </label>
 
-      <div>
-        <label className="block text-sm font-medium">Kommentar</label>
+      <label className="flex flex-col gap-1.5">
+        <span className="card-title">Kommentar</span>
         <textarea
-          type="text"
-          className="w-full border rounded-md px-3 py-2 bg-zinc-200"
+          className="field"
+          rows={3}
           value={comment}
-          placeholder="Kommentar"
+          placeholder="Noe vi bør vite?"
           onChange={(e) => setComment(e.target.value)}
         />
-      </div>
+      </label>
 
-      <div className="flex flex-row gap-2">
-        <input type="checkbox" checked={checked} onChange={handleCheckChange} />
-        <p className="text-sx">
-          Jeg godtar at informasjonen brukes kun til å sende tilbud på
-          solcellepaneler via e-post og eventuelt kontakte meg på mobil.
-        </p>
-      </div>
+      <label className="flex flex-row gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]"
+          checked={checked}
+          onChange={handleCheckChange}
+        />
+        <span style={{ color: "var(--ink-soft)" }}>
+          Jeg godtar at informasjonen brukes til å sende tilbud på
+          solcellepaneler via e-post, og eventuelt kontakte meg på mobil.
+        </span>
+      </label>
+
       <button
-        className="bg-red-500 self-center !w-full py-1 rounded-md text-sm funky !mt-0"
+        className="btn btn-primary w-full"
         onClick={handleSend}
         disabled={loading}
       >
-        {loading ? "Sender..." : "Jeg ønsker uforpliktende tilbud"}
+        {loading ? "Sender…" : "Jeg ønsker uforpliktende tilbud"}
       </button>
-      <p className="italic">
-        Få et estimat som gir deg en oversikt over årlige inntekter og
-        tilgjengelig offentlig støtte. Investering i solcellepaneler har nylig
-        blitt mye mer lønnsomt, noe som kan overraske deg positivt.
-      </p>
     </form>
   );
 }

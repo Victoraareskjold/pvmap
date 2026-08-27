@@ -2,306 +2,257 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  One set of tokens for the whole app. The landing page, the map page and the
+  modal all read from here, so a tweak lands everywhere at once — the spread
+  of hardcoded orange values is what made the old pages look scattered.
+*/
+:root {
+  --bg: #fffbf8;
+  --surface: #ffffff;
+  --ink: #1b1815;
+  --ink-soft: #6b6259;
+  --line: #ece2d8;
+  --accent: #ff9d00;
+  --accent-dark: #b56c00;
+  --accent-soft: #fff3e0;
+  --deep: #16324f;
+  --radius: 16px;
+  --shadow: 0 1px 2px rgba(27, 24, 21, 0.04), 0 8px 24px rgba(27, 24, 21, 0.06);
+}
+
 html,
 body {
   box-sizing: border-box;
   overflow-x: hidden;
-  height: fit-content;
-}
-.grid-container {
-  display: grid;
-  grid-template-columns: 1fr; /* Default single column */
-  gap: 16px;
+  background: var(--bg);
+  color: var(--ink);
 }
 
-@media (min-width: 768px) {
-  .grid-container {
-    grid-template-columns: repeat(2, 1fr); /* Two equal columns */
-  }
+/* --- Building blocks --------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
-.map {
-  width: 100%;
-  height: 60vh;
-}
-
-input[type="range"] {
-  -webkit-appearance: none;
-  height: 7px;
-  background: grey;
-  border-radius: 5px;
-  background: rgba(255, 149, 0, 0.27);
-}
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  height: 20px;
-  width: 20px;
-  border-radius: 50%;
-  background: #ffad2a;
-  cursor: pointer;
-}
-
-input[type="range"]:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 25;
-}
-
-.modal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-.divider {
-  background-color: black;
-  height: 1px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.funky {
-  background: linear-gradient(90deg, #ff9d00 23%, #ffd05a 92%);
-  border: 1px solid #884b00;
-  padding: 12px;
-  color: white;
-  font-size: 16px;
+.card-title {
+  font-size: 12px;
   font-weight: 600;
-  text-wrap: nowrap;
-  width: fit-content;
-  margin-top: 30px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
 }
 
-.funky:disabled {
-  opacity: 0.5;
-}
-
-.hidden {
-  display: none;
-}
-
-.block {
-  display: block;
-}
-/* 
-@media (min-width: 1024px) {
-  .md\\:block {
-    display: block;
-  }
-
-  .md\\:hidden {
-    display: none;
-  }
-} */
-
-.input-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 20px;
-  background-color: white;
-  border-radius: 12px;
-}
-
-.input-field {
-  display: flex;
+.btn {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-size: 16px;
-  border: 2px solid #ccc;
-  border-radius: 12px;
-  padding: 10px 15px;
-  transition: border-color 0.3s ease, background-color 0.3s ease;
-  background-color: #fff;
-}
-
-.input-field:focus-within {
-  border-color: #ff9d00;
-  background-color: rgba(255, 153, 0, 0.1);
-}
-
-.input-field input {
-  border: none;
-  outline: none;
-  font-size: 16px;
-  flex: 1;
-  text-align: left;
-}
-
-.input-field span {
-  font-size: 16px;
-  color: #555;
-  margin-left: 5px;
-}
-
-.calculate-button {
-  display: inline-block;
-  background: linear-gradient(90deg, #fff 23%, #ff9d00 82%);
-  color: 333;
-  border: none;
-  width: 150px;
-  height: 40px;
-  border-radius: 12px;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
   font-size: 14px;
   font-weight: 600;
+  padding: 10px 20px;
+  transition: filter 0.15s ease, background-color 0.15s ease,
+    border-color 0.15s ease;
   cursor: pointer;
-  text-align: center;
-  transition: background-color 0.3s ease, transform 0.2s ease;
 }
-
-.calculate-button:hover {
-  border: 2px solid #ffad2a;
-}
-
-.calculate-button:active {
-  border: 2px solid #ffad2a;
-  border-radius: 20px;
-}
-
-.calculate-button:disabled {
-  background: #f0f0f0;
-  color: #888;
+.btn:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
-
-/* Informasjonsstil */
-.info-box {
-  font-size: 14px;
-  color: #555;
-  border-left: 3px solid #ff9d00;
-  padding: 10px;
-  background: #fffaf0;
-  border-radius: 5px;
-  margin-top: 10px;
+.btn-primary {
+  background: linear-gradient(90deg, var(--accent) 10%, #ffc25f 100%);
+  color: #3b2400;
+  border: 1px solid var(--accent-dark);
+}
+.btn-primary:not(:disabled):hover {
+  filter: brightness(1.04);
+}
+.btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn-secondary:not(:disabled):hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.btn-dark {
+  background: var(--ink);
+  color: #fff;
+  border: 1px solid var(--ink);
 }
 
-.info-box p {
-  margin: 0;
+.field {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 15px;
+  background: var(--surface);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 157, 0, 0.18);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  border: 1px solid #ffe0b2;
+  white-space: nowrap;
+}
+
+.note {
+  border-radius: 12px;
+  border: 1px solid #ffe0b2;
+  background: var(--accent-soft);
+  color: #7a4a00;
+  padding: 12px 14px;
+  font-size: 14px;
   line-height: 1.5;
 }
-.error-message {
-  color: red;
-}
 
-@media (max-width: 768px) {
-  .calculator-container {
-    max-width: 350px;
-    margin: 0 auto;
-    margin-top: 30px;
-    padding: 20px;
-    border: 2px solid #ffad2a;
-    border-radius: 1.5rem;
-    background-color: #fff;
-    font-family: Arial, sans-serif;
-  }
-}
-.calculator-container {
-  max-width: 550px;
-  padding: 25px;
-  border: 2px solid #ffad2a;
-  border-radius: 1.5rem;
-  background-color: #fff;
-  font-family: Arial, sans-serif;
-  margin: 0 auto;
-}
-
-h2 {
-  font-size: 18px;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-p {
-  font-size: 14px;
-  margin: 10px 0;
-}
-
-.input-section {
-  margin: 15px 0;
-  display: flex;
-  flex-direction: column;
-  align-items: left;
-  gap: 10px;
-  justify-content: space-between;
-}
-.input-with-tooltip {
-  display: flex;
-  align-items: center;
-  position: relative;
-  gap: 12px;
-}
-
-.fields {
-  max-width: 320px;
-}
-
-.input-with-tooltip input {
-  flex-grow: 1;
-  padding-right: 40px;
-  text-align: left;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 8px;
-  font-size: 16px;
-  width: 150px;
-}
-
-.input-with-tooltip .unit {
-  position: absolute;
-  right: 10px;
-  font-size: 16px;
-  color: #666;
-}
-
-.tooltip-icon {
+.hint-btn {
   width: 20px;
   height: 20px;
+  flex-shrink: 0;
   border-radius: 50%;
-  background-color: white;
-  color: #333;
-  border: 3px solid #333;
-  font-size: 13px;
-  font-weight: bold;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  font-size: 12px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
 }
+.hint-bubble {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 8px;
+  width: 16rem;
+  z-index: 40;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 10px 12px;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+/* Kept: the tooltip icons inside SendModal still use these. */
+.tooltip-icon,
 .tooltip-icon-slider {
   width: 20px;
   height: 20px;
   border-radius: 50%;
   background-color: white;
   color: #333;
-  border: 3px solid #333;
-  font-size: 13px;
+  border: 2px solid #333;
+  font-size: 12px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  margin-right: 5px;
 }
 
-input[type="number"] {
-  width: 100px;
-  padding: 10px;
-  border: 1px solid #ccc;
+/* --- Range slider ------------------------------------------------------ */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
   border-radius: 5px;
-  font-size: 14px;
+  background: rgba(255, 157, 0, 0.25);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+input[type="range"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.unit {
-  font-size: 14px;
-  color: #555;
-  margin-left: 5px;
+/* --- Map --------------------------------------------------------------- */
+
+/*
+  The map element gets its height from an absolutely positioned child inside
+  a sized, relative box. Percentage heights through a flex chain collapse to
+  zero without warning, and a zero-height map looks exactly like a map that
+  failed to load — not a bug worth debugging twice.
+*/
+.map-box {
+  position: relative;
+  overflow: hidden;
+  background: #dfe4e8;
+}
+.map-surface {
+  position: absolute;
+  inset: 0;
+}
+.leaflet-container {
+  font-family: inherit;
+}
+
+/* --- Modal ------------------------------------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(20, 16, 12, 0.55);
+  z-index: 45;
+}
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Kept: SendModal's submit button uses this class. */
+.funky {
+  background: linear-gradient(90deg, #ff9d00 23%, #ffd05a 92%);
+  border: 1px solid #884b00;
+  padding: 12px;
+  color: #3b2400;
+  font-size: 16px;
+  font-weight: 600;
+  text-wrap: nowrap;
+  border-radius: 999px;
+}
+.funky:disabled {
+  opacity: 0.5;
 }

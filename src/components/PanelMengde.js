@@ -1,33 +1,29 @@
+const DESCRIPTIONS = [
+  {
+    match: "Premium",
+    text: "Premiumpaneler gir en optimal kombinasjon av høy ytelse, stilrent design og konkurransedyktig pris. De har lavere overflatetemperatur og bedre innebygd skyggehåndtering, noe som reduserer tap ved hindringer på overflaten. Panelene har svært lav degradering over tid, med 25 års produktgaranti og 30 års effektgaranti.",
+  },
+  {
+    match: "Performance",
+    text: "Performance-paneler gir maksimal produksjon og er ideelle for deg som vil utnytte takets fulle potensial. De har 30 års produktgaranti og 25 års effektgaranti. De koster litt mer, men høyere produksjon gir ekstra verdi over tid.",
+  },
+];
+
 export default function PanelMengde({ selectedPanelType, totalPanels }) {
+  const description = DESCRIPTIONS.find((d) =>
+    selectedPanelType.includes(d.match)
+  );
+
   return (
-    <div
-      className="bg-[#fff] rounded-3xl p-4 m-4 mx-auto w-full gap-6 flex flex-col border-2"
-      style={{ borderColor: "#FF9D00" }}
-    >
-      <div className="flex flex-row items-center justify-between mb-4">
-        <p className="text-sm sm:text-lg font-semibold text-[#333]">
-          Panelmengde <span className="font-bold">({selectedPanelType})</span>:
-        </p>
-        <div className="px-2 sm:px-4 py-1 sm:py-2 border-2 border-[#ff9800] rounded-md bg-white text-xs sm:text-base text-[#333] font-semibold">
-          {totalPanels} paneler
-        </div>
+    <div className="card flex flex-col gap-3 p-4">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="card-title">Panelmengde</span>
+        <span className="tag">{totalPanels} paneler</span>
       </div>
-      {selectedPanelType.includes("Premium") && (
-        <p className="text-md sm:text-md text-[#666]">
-          Premiumpaneler gir en optimal kombinasjon av høy ytelse, stilrent
-          design og konkurransedyktig pris. De har lavere overflatetemperatur og
-          bedre innebygd shading, noe som reduserer tap ved hindringer som
-          fugleskitt eller andre elementer på overflaten. Panelene har også
-          svært lav degenerering over tid, med 25 års produktgaranti og 30 års
-          effektgaranti.
-        </p>
-      )}
-      {selectedPanelType.includes("Performance") && (
-        <p className="text-md sm:text-md text-[#666]">
-          Performance paneler gir deg maksimal produksjon og er ideelle for deg
-          som vil utnytte takets fulle potensial. De har 30 års produktgaranti
-          og 25 års effektgaranti. Selv om de koster litt mer, får du høyere
-          produksjon som gir ekstra verdi over tid.
+      <p className="text-sm font-medium">{selectedPanelType}</p>
+      {description && (
+        <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+          {description.text}
         </p>
       )}
     </div>

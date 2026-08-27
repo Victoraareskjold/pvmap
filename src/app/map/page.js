@@ -1,886 +1,751 @@
 "use client";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
-
-import SelectOption from "../../components/SelectOption";
 
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
-import PanelMengde from "../../components/PanelMengde";
-import PriceEstimator from "../../components/PriceEstimator";
-import RoofList from "../../components/RoofList";
-import SendModal from "../../components/SendModal";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-// Dynamisk import av kartkomponenten
-const MapComponent = dynamic(() => import("../../components/MapComponent"), {
-  ssr: false,
-});
+import AddressSearch from "@/components/AddressSearch";
+import PanelMengde from "@/components/PanelMengde";
+import PriceEstimator from "@/components/PriceEstimator";
+import RoofList from "@/components/RoofList";
+import SelectOption from "@/components/SelectOption";
+import SendModal from "@/components/SendModal";
+import {
+  FALLBACK_TEXT,
+  MIN_PANELS,
+  panelWatts,
+  pvgisAspect,
+  roofFromDrawing,
+  roofsFromGoogle,
+  updateDrawnRoof,
+} from "@/lib/roofs";
+import { rateSegment } from "@/lib/solar";
 
-export default function Map() {
+const SolarMap = dynamic(() => import("@/components/SolarMap"), { ssr: false });
+const DrawMap = dynamic(() => import("@/components/DrawMap"), { ssr: false });
+
+const ROOF_TYPES = [
+  "Takstein (Dobbelkrummet)",
+  "Takstein (Enkeltkrummet)",
+  "Glassert takstein",
+  "Flat takstein",
+  "Shingel/Takpapp",
+  "Trapes",
+  "Flatt tak",
+  "Integrert i taket",
+  "Decra",
+  "Bølgeblikk",
+];
+const PANEL_TYPES = [
+  "Premium all black, 430W",
+  "Performance all black, 460W Bifacial",
+];
+
+const LEGEND = [
+  rateSegment(30, 180),
+  rateSegment(30, 90),
+  rateSegment(0, 180),
+  rateSegment(30, 135),
+  rateSegment(30, 0),
+];
+
+const nb = (n) => new Intl.NumberFormat("nb-NO").format(Math.round(n || 0));
+
+export default function MapPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const lat = searchParams.get("lat");
   const lng = searchParams.get("lng");
   const address = searchParams.get("address");
-  const addressId = searchParams.get("addressId");
   const site = searchParams.get("site");
-  const preAdr = searchParams.get("preAdr");
-  const router = useRouter();
-  const pricesRef = useRef(null);
+  const forceDraw = searchParams.get("draw") === "1";
 
-  const [selectedRoofType, setSelectedRoofType] = useState(
-    "Takstein (Dobbelkrummet)",
-  );
-  const [selectedPanelType, setSelectedPanelType] = useState(
-    "Premium all black, 430W",
-  );
-  const [selectedElPrice, setSelectedElPrice] = useState(1.5);
-
-  const [combinedData, setCombinedData] = useState([]);
-  const [sheetData, setSheetData] = useState(null);
-  const [modalData, setModalData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const [roofs, setRoofs] = useState([]);
-  const [adjustedPanelCounts, setAdjustedPanelCounts] = useState({});
-
-  const totalPanels = Object.values(adjustedPanelCounts).reduce(
-    (total, count) => total + count,
-    0,
+  const center = useMemo(
+    () =>
+      lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : null,
+    [lat, lng]
   );
 
-  const [visibleRoofs, setVisibleRoofs] = useState([]);
+  // --- Roofs and source -------------------------------------------------
+  const [mode, setMode] = useState("loading"); // loading | google | draw
+  const [fallbackReason, setFallbackReason] = useState(null);
+  const [building, setBuilding] = useState(null);
+  const [googleRoofs, setGoogleRoofs] = useState([]);
+  const [drawnRoofs, setDrawnRoofs] = useState([]);
 
-  const [isChecked, setIsChecked] = useState({});
+  const [checked, setChecked] = useState({});
+  const [panelCounts, setPanelCounts] = useState({});
+  const [efficiency, setEfficiency] = useState({});
 
-  const [yearlyProd, setYearlyProd] = useState(0);
-  const [potentialSaving, setPotentialSaving] = useState(0);
+  // --- Choices ----------------------------------------------------------
+  const [roofType, setRoofType] = useState(ROOF_TYPES[0]);
+  const [panelType, setPanelType] = useState(PANEL_TYPES[0]);
+  const [elPrice, setElPrice] = useState(1.5);
+
+  // --- Economy ----------------------------------------------------------
   const [yearlyCost, setYearlyCost] = useState(0);
   const [yearlyCost2, setYearlyCost2] = useState(0);
+  const [priceLoading, setPriceLoading] = useState(false);
 
-  const [apiKey, setApiKey] = useState(null);
-
+  const [desiredKwh, setDesiredKwh] = useState("");
+  const [coveragePercentage, setCoveragePercentage] = useState(40);
+  const [errors, setErrors] = useState({ kwh: "", calculation: "" });
   const [showModal, setShowModal] = useState(false);
-  const [openModal, setOpenModal] = useState(null);
+  const [openHint, setOpenHint] = useState(null);
 
-  const minPanels = 6;
+  const summaryRef = useRef(null);
 
-  const handleRoofTypeChange = (value) => {
-    setSelectedRoofType(value);
-  };
-
-  const handlePanelTypeChange = (value) => {
-    setSelectedPanelType(value);
-  };
-
-  const handleSelectedElPrice = (value) => {
-    setSelectedElPrice(value);
-  };
-
-  const toggleModal = () => {
-    setShowModal(!showModal);
-  };
-
-  const handleOpenModal = (modalName) => {
-    setOpenModal(modalName);
-  };
-
-  const handleCloseModal = () => {
-    setOpenModal(null);
-  };
-
+  /* ------------------------------------------------------------------
+     1. Ask Google first. The route always answers 200 with an envelope,
+        so "no coverage" and "quota spent" arrive as values, not errors,
+        and both land the user in draw mode with an explanation.
+  ------------------------------------------------------------------ */
   useEffect(() => {
-    const fetchApiKey = async () => {
-      try {
-        const response = await fetch("/api/apiKey");
-        const data = await response.json();
+    if (!center) return;
+    if (forceDraw) {
+      setMode("draw");
+      setFallbackReason("manuelt");
+      return;
+    }
 
-        if (data.apiKey) {
-          setApiKey(data.apiKey);
+    let cancelled = false;
+    setMode("loading");
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/solar?lat=${center.lat}&lng=${center.lng}`);
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (data.status === "ok") {
+          const roofs = roofsFromGoogle(data.building);
+          if (roofs.length > 0) {
+            setBuilding(data.building);
+            setGoogleRoofs(roofs);
+            // North-facing planes are off by default — they should not be
+            // sold in, but the user can still switch them on.
+            setChecked(
+              Object.fromEntries(
+                roofs.map((r) => [r.id, r.rating.key !== "north"])
+              )
+            );
+            setPanelCounts(
+              Object.fromEntries(roofs.map((r) => [r.id, r.maxPanels]))
+            );
+            setMode("google");
+            return;
+          }
         }
-      } catch (error) {
-        console.error("Feil ved henting av API-nøkkel:", error);
+        setFallbackReason(data.reason ?? "ingen-dekning");
+        setMode("draw");
+      } catch {
+        if (cancelled) return;
+        setFallbackReason("feil");
+        setMode("draw");
       }
-    };
+    })();
 
-    fetchApiKey();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [center, forceDraw]);
+
+  const roofs = mode === "google" ? googleRoofs : drawnRoofs;
+  const roofsRef = useRef(roofs);
+  useEffect(() => {
+    roofsRef.current = roofs;
+  }, [roofs]);
+
+  /* ------------------------------------------------------------------
+     2. Production per roof from PVGIS.
+
+        The efficiency lives in its own map rather than on the roof
+        objects: writing it back into `roofs` would retrigger this effect
+        on its own result. The key below is what actually changes the
+        answer — id, direction, pitch, capacity and panel wattage.
+  ------------------------------------------------------------------ */
+  const pvgisKey = useMemo(
+    () =>
+      roofs
+        .map(
+          (r) =>
+            `${r.id}:${Math.round(r.direction)}:${Math.round(r.angle)}:${r.maxPanels}`
+        )
+        .join("|"),
+    [roofs]
+  );
 
   useEffect(() => {
-    if (!addressId) return;
+    if (!center || !pvgisKey) {
+      setEfficiency({});
+      return;
+    }
+    let cancelled = false;
+    const watts = panelWatts(panelType);
 
-    const fetchData = async () => {
-      try {
-        // 1. Hent takdata
-        const roofResponse = await fetch(`/api/roof?addressId=${addressId}`);
-        if (!roofResponse.ok) {
-          console.error(
-            "Feil ved henting av takdata: ",
-            roofResponse.statusText,
-          );
-          return;
-        }
-        const roofData = await roofResponse.json();
+    const timer = setTimeout(async () => {
+      const list = roofsRef.current;
+      const result = {};
 
-        // 2. Generer Solcelledata
-        const solarData = roofData.map((roof, index) => {
-          const panelWidth = 1.1;
-          const panelHeight = 1.7;
-          const vPanels = Math.floor((roof.Lengde * 0.95) / panelWidth);
-          const hPanels = Math.floor((roof.Bredde * 0.95) / panelHeight);
-          const panelCount = vPanels * hPanels;
-
-          return {
-            id: index,
-            area: roof.Areal3D,
-            coordinates: roof.Geometri,
-            direction: roof.Retning,
-            angle: roof.Helning,
-            panels: {
-              panelCount,
-              vPanels,
-              hPanels,
-            },
-            pv: null,
-          };
-        });
-
-        // 3. Hent PVGIS-data for hver takflate
-        const pvPromises = solarData.map(async (data) => {
-          if (data.panels.panelCount <= minPanels) return { ...data, pv: null };
-
-          const apiUrl = `/api/pvgis?lat=${lat}&lng=${lng}&panelCount=${
-            data.panels.panelCount
-          }&aspect=${data.direction - 179}&angle=${
-            data.angle + 1
-          }&panelWattage=${getNumbers(selectedPanelType)}`;
+      await Promise.all(
+        list.map(async (roof) => {
+          if (roof.maxPanels < MIN_PANELS) return;
+          // Flat roofs are mounted on tilted racks, so 0° would understate
+          // them — and PVGIS rejects a zero tilt anyway.
+          const tilt = roof.angle < 5 ? 15 : Math.round(roof.angle);
+          const url =
+            `/api/pvgis?lat=${center.lat}&lng=${center.lng}` +
+            `&panelCount=${roof.maxPanels}&panelWattage=${watts}` +
+            `&aspect=${pvgisAspect(roof.direction)}&angle=${tilt}`;
           try {
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error("Feil i PVGIS API");
-            const pvData = await response.json();
-
-            const efficiencyPerPanel =
-              pvData.outputs.totals.fixed.E_y / data.panels.panelCount;
-
-            return { ...data, pv: pvData, efficiencyPerPanel };
-          } catch (error) {
-            console.error("Feil ved henting av PVGIS-data:", error.message);
-            return { ...data, pv: null };
+            const res = await fetch(url);
+            if (!res.ok) return;
+            const data = await res.json();
+            const yearly = data?.outputs?.totals?.fixed?.E_y;
+            if (yearly) result[roof.id] = yearly / roof.maxPanels;
+          } catch {
+            /* roof keeps efficiency 0 and is shown as "beregner…" */
           }
-        });
+        })
+      );
 
-        // 4. Kombiner alt og oppdater tilstand
-        const fullData = await Promise.all(pvPromises);
-        setCombinedData(fullData);
+      if (!cancelled) setEfficiency(result);
+    }, 400);
 
-        const topTwoRoofs = fullData
-          .sort((a, b) => {
-            const outputA =
-              a.pv?.outputs.totals.fixed.E_y / a.panels.panelCount || 0;
-            const outputB =
-              b.pv?.outputs.totals.fixed.E_y / b.panels.panelCount || 0;
-            return outputB - outputA;
-          })
-          .slice(0, 2);
-
-        // juster slider til å halvere med mindre det er < 12 paneler, da skal det til 6.
-        const initialPanelCounts = fullData.reduce((acc, roof) => {
-          if (topTwoRoofs.some((topRoof) => topRoof.id === roof.id)) {
-            acc[roof.id] = Math.ceil(roof.panels.panelCount / 2);
-          } else {
-            acc[roof.id] = 0;
-          }
-          return acc;
-        }, {});
-
-        setAdjustedPanelCounts(initialPanelCounts);
-
-        const initialChecked = fullData.reduce((acc, roof) => {
-          acc[roof.id] = topTwoRoofs.some((topRoof) => topRoof.id === roof.id);
-          return acc;
-        }, {});
-
-        setIsChecked(initialChecked);
-      } catch (error) {
-        console.error("Feil under datahåndtering:", error.message);
-      }
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
     };
-    fetchData();
-  }, [selectedPanelType, addressId, lat, lng]);
+  }, [pvgisKey, panelType, center]);
 
+  const viewRoofs = useMemo(
+    () =>
+      roofs.map((r) => ({ ...r, efficiencyPerPanel: efficiency[r.id] ?? 0 })),
+    [roofs, efficiency]
+  );
+
+  // --- Totals -----------------------------------------------------------
+  const totalPanels = viewRoofs.reduce(
+    (sum, r) => sum + (checked[r.id] ? panelCounts[r.id] ?? 0 : 0),
+    0
+  );
+  const yearlyProd = viewRoofs.reduce(
+    (sum, r) =>
+      sum +
+      (checked[r.id] ? (r.efficiencyPerPanel || 0) * (panelCounts[r.id] ?? 0) : 0),
+    0
+  );
+  const potentialSaving = yearlyProd * elPrice;
+
+  const checkedRoofData = useMemo(
+    () =>
+      viewRoofs
+        .filter((r) => checked[r.id])
+        .map((r) => ({
+          roofId: r.id,
+          adjustedPanelCount: panelCounts[r.id] ?? r.maxPanels,
+          maxPanels: r.maxPanels,
+          direction: r.direction,
+          angle: r.angle,
+        })),
+    [viewRoofs, checked, panelCounts]
+  );
+
+  // --- Price from the pricing sheet ------------------------------------
   useEffect(() => {
-    const totalProduction = combinedData.reduce((sum, roof) => {
-      if (isChecked[roof.id]) {
-        const adjustedCount =
-          adjustedPanelCounts[roof.id] || roof.panels.panelCount;
-        const roofProduction = (roof.efficiencyPerPanel || 0) * adjustedCount;
-        return sum + roofProduction;
-      }
-      return sum;
-    }, 0);
+    if (totalPanels === 0) {
+      setYearlyCost(0);
+      setYearlyCost2(0);
+      return;
+    }
 
-    setYearlyProd(totalProduction);
-  }, [adjustedPanelCounts, isChecked, combinedData, selectedElPrice]);
-
-  useEffect(() => {
-    const fetchGoogleSheetsData = async () => {
-      setIsLoading(true);
+    const timer = setTimeout(async () => {
+      setPriceLoading(true);
       try {
-        const response = await fetch("/api/googleSheets", {
+        const res = await fetch("/api/googleSheets", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             totalPanels,
-            selectedRoofType,
-            selectedPanelType,
+            selectedRoofType: roofType,
+            selectedPanelType: panelType,
             site,
           }),
         });
-
-        if (!response.ok) {
-          console.error(`Feil under henting av data: ${response.status}`);
-          return;
+        if (res.ok) {
+          const data = await res.json();
+          setYearlyCost(parseFloat(data.valueFromB2 || 0));
+          setYearlyCost2(parseFloat(data.valueFromE2 || 0));
         }
-
-        const data = await response.json();
-        //console.log("Google Sheets API response:", data); // Log API response
-
-        setYearlyCost(parseFloat(data.valueFromB2 || 0));
-        setYearlyCost2(parseFloat(data.valueFromE2 || 0));
-      } catch (error) {
-        console.error("Feil under henting av data fra Google Sheets:", error);
+      } catch (e) {
+        console.error("Feil under henting av pris:", e);
       }
-      setIsLoading(false);
-    };
+      setPriceLoading(false);
+    }, 500);
 
-    const debounceTimeout = setTimeout(() => {
-      if (totalPanels > 0) {
-        //console.log("🔍 Henter årlig kostnad for antall paneler:", totalPanels);
-        fetchGoogleSheetsData();
-      } else {
-        console.warn(
-          "⚠️ Ingen paneler valgt. Årlig kostnad kan ikke beregnes.",
-        );
-      }
-    }, 500); // 500ms debounce
+    return () => clearTimeout(timer);
+  }, [totalPanels, roofType, panelType, site]);
 
-    // Cleanup: Fjern tidligere timeout hvis `totalPanels` oppdateres før 500ms
-    return () => clearTimeout(debounceTimeout);
-  }, [totalPanels, selectedRoofType, selectedPanelType, site]);
-
-  const evaluateDirection = (direction) => {
-    const normalizedDirection = direction % 360;
-
-    if (normalizedDirection >= 315 || normalizedDirection < 45) {
-      return "N";
-    } else if (normalizedDirection >= 45 && normalizedDirection < 135) {
-      return "Ø";
-    } else if (normalizedDirection >= 135 && normalizedDirection < 225) {
-      return "S";
-    } else {
-      return "V";
-    }
-  };
-
-  const toggleRoof = (roofId, isCheckedNow) => {
-    const roofData = combinedData.find((roof) => roof.id === roofId);
-    setIsChecked((prev) => ({
-      ...prev,
-      [roofId]: isCheckedNow,
-    }));
-    console.log("id:", roofId);
-    console.log("helning: ", roofData.angle);
-
-    if (isCheckedNow) {
-      setVisibleRoofs((prev) => [...prev, roofId]);
-    } else {
-      setVisibleRoofs((prev) => prev.filter((id) => id !== roofId));
-    }
-
-    setAdjustedPanelCounts((prev) => ({
-      ...prev,
-      [roofId]: isCheckedNow
-        ? combinedData.find((r) => r.id === roofId)?.panels.panelCount
-        : 0,
-    }));
-  };
-
-  useEffect(() => {
-    const totalProduction = combinedData.reduce((sum, roof) => {
-      if (isChecked[roof.id]) {
-        const adjustedCount =
-          adjustedPanelCounts[roof.id] || roof.panels.panelCount;
-        const roofProduction = (roof.efficiencyPerPanel || 0) * adjustedCount;
-        return sum + roofProduction;
-      }
-      return sum;
-    }, 0);
-
-    setYearlyProd(totalProduction);
-  }, [adjustedPanelCounts, isChecked, combinedData]);
-
-  useEffect(() => {
-    const totalSaving = yearlyProd * selectedElPrice;
-    setPotentialSaving(totalSaving);
-  }, [yearlyProd, selectedElPrice]);
-
-  const getNumbers = (str) => {
-    let matches = str.match(/(\d+)/);
-
-    if (matches) {
-      return matches[0];
-    }
-  };
-
-  const [desiredKWh, setDesiredKWh] = useState(""); // State for strømforbruk
-  const [coveragePercentage, setCoveragePercentage] = useState(40); // State for prosent
-  const [errors, setErrors] = useState({ kWh: "", percentage: "" }); // State for feil
-  const [roofDetails, setRoofDetails] = useState({});
-  const [activeTooltip, setActiveTooltip] = useState(null);
-  const [checkedRoofData, setCheckedRoofData] = useState({});
-
-  const toggleTooltip = (tooltipKey) => {
-    setActiveTooltip((prev) => (prev === tooltipKey ? null : tooltipKey));
-  };
-
-  useEffect(() => {
-    const handleOutsideClick = (event) => {
-      if (!event.target.closest(".tooltip-icon")) {
-        setActiveTooltip(null);
-      }
-    };
-
-    document.addEventListener("click", handleOutsideClick);
-    return () => {
-      document.removeEventListener("click", handleOutsideClick);
-    };
+  // --- Roof interaction -------------------------------------------------
+  const toggleRoof = useCallback((id, next) => {
+    setChecked((prev) => {
+      const on = next ?? !prev[id];
+      return { ...prev, [id]: on };
+    });
   }, []);
 
-  const handleCalculatePanels = (adjustedKWh = null) => {
-    const newErrors = { kWh: "", percentage: "", calculation: "" };
+  const setCount = useCallback((id, count) => {
+    setPanelCounts((prev) => ({ ...prev, [id]: count }));
+  }, []);
 
-    // Use adjustedKWh if provided, otherwise use desiredKWh
-    const effectiveKWh = adjustedKWh ?? desiredKWh;
+  const handleRoofAdded = useCallback((drawing) => {
+    const roof = roofFromDrawing(drawing);
+    setDrawnRoofs((prev) => [...prev, roof]);
+    setChecked((prev) => ({ ...prev, [roof.id]: true }));
+    setPanelCounts((prev) => ({ ...prev, [roof.id]: roof.maxPanels }));
+  }, []);
 
-    console.log("Starting calculation...");
-    console.log("Effective KWh:", effectiveKWh);
-    console.log("Coverage Percentage:", coveragePercentage);
+  const handleRoofUpdate = useCallback((id, changes) => {
+    setDrawnRoofs((prev) =>
+      prev.map((r) => (r.id === id ? updateDrawnRoof(r, changes) : r))
+    );
+  }, []);
 
-    if (!effectiveKWh || effectiveKWh <= 0 || isNaN(effectiveKWh)) {
-      newErrors.kWh = "Skriv inn ønsket årlig strømforbruk (kWh).";
-    }
+  const handleRoofDelete = useCallback((id) => {
+    setDrawnRoofs((prev) => prev.filter((r) => r.id !== id));
+    setChecked((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setPanelCounts((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
 
-    console.log("Validation Errors:", newErrors);
-
-    setErrors(newErrors);
-    if (newErrors.kWh || newErrors.percentage) return;
-
-    const energyRequirement = (effectiveKWh * coveragePercentage) / 100;
-
-    console.log("Energy Requirement (kWh):", energyRequirement);
-
-    const maxCoverage = combinedData.reduce((sum, roof) => {
-      return sum + (roof.efficiencyPerPanel || 0) * roof.panels.panelCount;
-    }, 0);
-
-    console.log("Max Coverage (kWh):", maxCoverage);
-
-    if (energyRequirement > maxCoverage) {
-      const adjustedKWhValue = Math.floor(
-        (maxCoverage / coveragePercentage) * 100,
-      );
-
-      // Set the error message
-      setErrors((prev) => ({
-        ...prev,
-        calculation: `Maksimal dekning er ${adjustedKWhValue.toLocaleString(
-          "nb-NO",
-        )} kWh.`,
-      }));
-
-      setDesiredKWh(adjustedKWhValue);
-
-      if (adjustedKWhValue !== effectiveKWh) {
-        setTimeout(() => handleCalculatePanels(adjustedKWhValue), 0);
+  // Keep the panel count within the capacity of the roof it belongs to
+  useEffect(() => {
+    setPanelCounts((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const roof of roofs) {
+        if (next[roof.id] === undefined || next[roof.id] > roof.maxPanels) {
+          next[roof.id] = roof.maxPanels;
+          changed = true;
+        }
       }
+      return changed ? next : prev;
+    });
+  }, [roofs]);
 
+  const switchToDraw = () => {
+    setMode("draw");
+    setFallbackReason("manuelt");
+  };
+
+  const switchToGoogle = () => {
+    setMode("google");
+    setFallbackReason(null);
+  };
+
+  /* Picks roofs from best to worst until the wanted production is covered. */
+  const calculatePanels = (override = null) => {
+    const wanted = Number(override ?? desiredKwh);
+    if (!wanted || wanted <= 0 || Number.isNaN(wanted)) {
+      setErrors({ kwh: "Skriv inn ønsket årlig strømforbruk (kWh).", calculation: "" });
+      return;
+    }
+    setErrors({ kwh: "", calculation: "" });
+
+    const need = (wanted * coveragePercentage) / 100;
+    const capacity = viewRoofs.reduce(
+      (sum, r) => sum + (r.efficiencyPerPanel || 0) * r.maxPanels,
+      0
+    );
+
+    if (need > capacity) {
+      const capped = Math.floor((capacity / coveragePercentage) * 100);
+      setErrors({
+        kwh: "",
+        calculation: `Taket ditt dekker maksimalt ${nb(capped)} kWh.`,
+      });
+      setDesiredKwh(capped);
+      if (capped !== wanted) setTimeout(() => calculatePanels(capped), 0);
       return;
     }
 
-    let remainingEnergy = energyRequirement;
-    const updatedPanelCounts = {};
-    const updatedIsChecked = {};
-    const updatedVisibleRoofs = [];
+    let remaining = need;
+    const nextChecked = {};
+    const nextCounts = {};
 
-    console.log("Starting roof sorting and panel allocation...");
-
-    const sortedRoofs = [...combinedData].sort(
-      (a, b) => b.efficiencyPerPanel - a.efficiencyPerPanel,
-    );
-
-    for (const roof of sortedRoofs) {
-      if (remainingEnergy <= 0) break;
-
-      const panelsNeeded = Math.min(
-        Math.ceil(remainingEnergy / (roof.efficiencyPerPanel || 1)),
-        roof.panels.panelCount,
+    for (const roof of [...viewRoofs].sort(
+      (a, b) => (b.efficiencyPerPanel || 0) - (a.efficiencyPerPanel || 0)
+    )) {
+      if (remaining <= 0) break;
+      const panels = Math.min(
+        Math.ceil(remaining / (roof.efficiencyPerPanel || 1)),
+        roof.maxPanels
       );
-
-      if (panelsNeeded > 0) {
-        updatedIsChecked[roof.id] = true;
-        updatedPanelCounts[roof.id] = panelsNeeded;
-        updatedVisibleRoofs.push(roof.id);
-        remainingEnergy -= panelsNeeded * (roof.efficiencyPerPanel || 0);
-
-        console.log(`Allocating panels to roof ID ${roof.id}`);
-        console.log("Panels Needed:", panelsNeeded);
-        console.log("Remaining Energy (kWh):", remainingEnergy);
+      if (panels > 0) {
+        nextChecked[roof.id] = true;
+        nextCounts[roof.id] = panels;
+        remaining -= panels * (roof.efficiencyPerPanel || 0);
       }
     }
 
-    console.log("Final Panel Counts:", updatedPanelCounts);
-    console.log("Visible Roofs:", updatedVisibleRoofs);
-
-    setAdjustedPanelCounts(updatedPanelCounts);
-    setIsChecked(updatedIsChecked);
-    setVisibleRoofs(updatedVisibleRoofs);
-
-    if (window.innerWidth < 768) {
-      pricesRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-
-    console.log("Calculation complete.");
+    setChecked(nextChecked);
+    setPanelCounts(nextCounts);
+    if (window.innerWidth < 1024)
+      summaryRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(() => {
-    const updatedCheckedRoofData = combinedData
-      .filter((roof) => isChecked[roof.id])
-      .map((roof) => ({
-        roofId: roof.id,
-        adjustedPanelCount:
-          adjustedPanelCounts[roof.id] || roof.panels.panelCount,
-        maxPanels: roof.panels.panelCount,
-        direction: roof.direction,
-        angle: roof.angle,
-      }));
-
-    //console.log("✅ Updated Checked Roof Data:", updatedCheckedRoofData);
-    setCheckedRoofData(updatedCheckedRoofData);
-
-    setModalData({
-      checkedRoofData: updatedCheckedRoofData,
-      totalPanels,
-      selectedElPrice,
-      selectedRoofType,
-      selectedPanelType,
-      yearlyProd,
-      yearlyCost,
-      address,
-    });
-  }, [
-    isChecked,
-    adjustedPanelCounts,
-    combinedData,
-    totalPanels,
-    selectedElPrice,
-    selectedRoofType,
-    selectedPanelType,
-    yearlyProd,
-    yearlyCost,
-    address,
-  ]);
-
-  const routeBack = () => {
-    router.push("/");
-  };
-
-  useEffect(() => {
-    const sortedData = combinedData.filter(
-      (roof) => roof.panels.panelCount >= minPanels,
+  if (!center) {
+    return (
+      <main className="flex min-h-screen items-center justify-center p-6">
+        <div className="card flex max-w-md flex-col gap-4 p-6 text-center">
+          <p>Vi mangler koordinatene for adressen. Søk den opp på nytt.</p>
+          <button className="btn btn-primary" onClick={() => router.push("/")}>
+            Til søket
+          </button>
+        </div>
+      </main>
     );
+  }
 
-    setVisibleRoofs(sortedData.slice(0, 2).map((roof) => roof.id));
-  }, [combinedData, minPanels]);
+  const detectedArrays = building?.solarPotential?.detectedArrays?.length ?? 0;
+  const hintText = {
+    prod: "Estimert produksjon er beregnet med PVGIS (2005–2020) for takets retning og helning.",
+    saving: "Produksjon × din estimerte strømpris, inkludert nettleie.",
+    cost: "Laveste sum er direktekjøp. Høyeste er med miljølån fordelt over 30 år.",
+    kwh: "En gjennomsnittlig leilighet bruker 8 000–12 000 kWh per år, en enebolig 20 000–30 000 kWh.",
+    coverage:
+      "Anbefalt dekning er 30–60 % for husholdninger. Næringsbygg bør ligge på 80 % eller mer.",
+  };
+
+  const Hint = ({ id }) => (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        className="hint-btn"
+        onClick={() => setOpenHint((p) => (p === id ? null : id))}
+      >
+        i
+      </button>
+      {openHint === id && <span className="hint-bubble">{hintText[id]}</span>}
+    </span>
+  );
 
   return (
-    <div className="w-screen h-screen">
-      <div className="flex flex-col md:flex-row w-full gap-2">
-        {/* Top Section: Map */}
-        <div className="w-full relative">
-          <Suspense fallback={<div>Loading...</div>}>
-            <img
-              src="/colorGrading.png"
-              alt="Color Grading Overlay"
-              className="absolute z-20 w-20 right-3 top-12 rounded-md hidden md:block"
-            />
-            <MapComponent
-              lat={lat}
-              lng={lng}
-              combinedData={combinedData}
-              isChecked={isChecked}
-              toggleRoof={toggleRoof}
-              adjustedPanelCounts={adjustedPanelCounts}
-              apiKey={apiKey}
-            />
-          </Suspense>
+    <div className="flex min-h-screen flex-col lg:h-screen lg:overflow-hidden">
+      {/* Topplinje */}
+      <header
+        className="flex shrink-0 flex-wrap items-center gap-3 border-b px-4 py-3"
+        style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="card-title">Adresse</p>
+          <h1 className="truncate text-base font-semibold">
+            {address || "Ukjent adresse"}
+          </h1>
         </div>
+        <div className="hidden w-72 md:block">
+          <AddressSearch variant="compact" />
+        </div>
+        <button className="btn btn-dark" onClick={() => router.push("/")}>
+          Nytt søk
+        </button>
+      </header>
 
-        {/* Right Column: Address and Roof List */}
-        <div className="flex flex-col gap-8 p-4 w-full md:max-w-3xl">
-          {/* Address Section */}
-          <div className="flex flex-row justify-between">
-            <h1 className="text-xl">Adresse: {address}</h1>
-            <button
-              className="bg-black text-white rounded-full text-sm py-1.5 px-4"
-              onClick={routeBack}
-            >
-              Nytt søk
-            </button>
-          </div>
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        {/* Kart */}
+        <div className="map-box h-[48vh] shrink-0 lg:h-auto lg:flex-1 lg:shrink">
+          {mode === "loading" && (
+            <div className="map-surface flex items-center justify-center">
+              <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                Leter etter taket ditt…
+              </p>
+            </div>
+          )}
 
-          {/* Roof List and Calculator */}
-          <div className="flex flex-col gap-6">
-            <SelectOption
-              title="Din taktype:"
-              options={[
-                "Takstein (Dobbelkrummet)",
-                "Takstein (Enkeltkrummet)",
-                "Glassert takstein",
-                "Flat takstein",
-                "Shingel/Takpapp",
-                "Trapes",
-                "Flatt tak",
-                "Integrert i taket",
-                "Decra",
-                "Bølgeblikk",
-              ]}
-              onSelect={handleRoofTypeChange}
+          {mode === "google" && (
+            <SolarMap
+              center={center}
+              building={building}
+              roofs={viewRoofs}
+              checked={checked}
+              panelCounts={panelCounts}
+              onToggle={toggleRoof}
             />
-            <SelectOption
-              title="Paneltype:"
-              options={[
-                "Premium all black, 430W",
-                "Performance all black, 460W Bifacial",
-              ]}
-              onSelect={handlePanelTypeChange}
-            />
-          </div>
+          )}
 
-          <p className="italic text-gray-600 text-lg">
-            Klikk på takflatene ovenfor i kartet for å legge til eller ta bort
-          </p>
-          <p className="text-lg text-center">
-            Takflater på eiendommen - Sortert fra mest til minst solinnstråling
-          </p>
-          {/* Roof List */}
-          {combinedData.length > 0 && (
-            <div className="flex flex-col gap-4">
-              <RoofList
-                roofs={combinedData}
-                visibleRoofs={visibleRoofs}
-                toggleRoof={toggleRoof}
-                evaluateDirection={evaluateDirection}
-                isChecked={isChecked}
-                adjustedPanelCounts={adjustedPanelCounts}
-                setAdjustedPanelCounts={setAdjustedPanelCounts}
-                minPanels={minPanels}
-              />
-              <div className="block md:hidden max-w-[32rem] mx-auto w-full">
-                <PriceEstimator onSelect={handleSelectedElPrice} />
-              </div>
+          {mode === "draw" && (
+            <DrawMap
+              center={center}
+              roofs={viewRoofs}
+              checked={checked}
+              onToggle={toggleRoof}
+              onRoofAdded={handleRoofAdded}
+            />
+          )}
+
+          {/* Fargeforklaring — samme skala uansett kilde */}
+          {mode !== "loading" && (
+            <div className="card absolute bottom-3 right-3 z-20 hidden gap-1.5 p-3 md:flex md:flex-col">
+              <p className="card-title">Egnethet</p>
+              {LEGEND.map((r) => (
+                <span key={r.key} className="flex items-center gap-2 text-xs">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ background: r.color }}
+                  />
+                  {r.label}
+                </span>
+              ))}
             </div>
           )}
         </div>
-      </div>
 
-      {/* Bottom Grid: Price Estimator, PanelMengde & Calculator */}
-      <div className="flex flex-col lg:flex-row md:max-w-[32rem] lg:max-w-[60rem] gap-8 mx-auto mt-8 px-4">
-        {/* Column 1 */}
-        <div className="hidden md:flex flex-col space-y-8 w-full">
-          <PriceEstimator onSelect={handleSelectedElPrice} />
-          <PanelMengde
-            selectedPanelType={selectedPanelType}
-            totalPanels={totalPanels}
-          />
-        </div>
-
-        {/* Column 2: Calculator */}
-        <div className="calculator-container space-y-4 my-4 md:max-w-[32rem]">
-          <h2>Finn ut hvor mange solcellepaneler du trenger</h2>
-          <p>
-            Skriv inn ditt årlige strømforbruk i kWh (for eksempel: *25 000*):
-          </p>
-          <div className="input-section">
-            <div className="input-with-tooltip relative">
-              <span
-                className="tooltip-icon cursor-pointer"
-                onClick={() => toggleTooltip("kwh")}
-              >
-                i
-              </span>
-              {activeTooltip === "kwh" && (
-                <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
-                  Usikker på hvor mye strøm du bruker? En gjennomsnittlig
-                  leilighet bruker 8 000 - 12 000 kwh per år, mens en enebolig
-                  bruker 20 000 - 30 000 kwh. Sjekk din siste strømregning eller
-                  kontakt strømleverandøren din for eksakt forbruk.
-                </div>
-              )}
-              <input
-                id="kwh-input"
-                type="number"
-                value={desiredKWh}
-                className="fields"
-                onChange={(e) => {
-                  setDesiredKWh(e.target.value);
-                }}
-                placeholder="27 500"
-              />
-              <span className="">kWh</span>
-            </div>
-            {errors.kWh && <span className="error-message">{errors.kWh}</span>}
-          </div>
-          <p>
-            Basert på et forbruk på{" "}
-            <em>
-              {desiredKWh ? desiredKWh.toLocaleString("nb-NO") : "27 500"}
-            </em>{" "}
-            kWh, anbefaler vi egen produksjon på{" "}
-            <strong>
-              <span className="ml-1">
-                {(
-                  (desiredKWh * coveragePercentage) / 100 || 11000
-                ).toLocaleString("nb-NO")}{" "}
-                kWh
-              </span>
-            </strong>
-            .
-          </p>
-          <p>Dette vil dekke ditt årlige strømbehov med:</p>
-          <div className="input-section">
-            <div className="input-with-tooltip relative">
-              <span
-                className="tooltip-icon cursor-pointer"
-                onClick={() => toggleTooltip("percentage")}
-              >
-                i
-              </span>
-              {activeTooltip === "percentage" && (
-                <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
-                  Årlig strømforbruk burde dekke 30-60 % en av forbruket for
-                  private husholdninger, avhengig av ønsket balanse mellom
-                  investering og lønnsomhet. For næringsbygg anbefales ofte en
-                  dekning på 80 % eller mer, spesielt dersom strømforbruket er
-                  høyt og stabilt. Du kan justere dette feltet for å tilpasse
-                  beregningen til ditt behov.
-                </div>
-              )}
-              <input
-                id="percent-input"
-                type="number"
-                value={coveragePercentage}
-                onChange={(e) => {
-                  let value = e.target.value;
-
-                  if (value > 100) {
-                    value = 100;
-                  }
-
-                  if (value < 0) {
-                    value = 0;
-                  }
-
-                  setCoveragePercentage(value);
-                }}
-                placeholder="40"
-                className="fields"
-                min="0"
-                max="100"
-              />
-              <span className="" style={{ width: "20px" }}>
-                %
-              </span>
-            </div>
-            {errors.percentage && (
-              <span className="error-message">{errors.percentage}</span>
-            )}
-          </div>
-          <p>
-            Trykk på knappen for å beregne antall solcellepaneler du trenger for
-            å oppnå
-            <strong>
-              <span className="ml-1">
-                {(
-                  (desiredKWh * coveragePercentage) / 100 || 11000
-                ).toLocaleString("nb-NO")}
-                kWh
-              </span>
-            </strong>
-            .
-          </p>
-          <div className="flex items-center justify-between">
-            <button
-              id="calculate-button"
-              className="calculate-button"
-              onClick={() => handleCalculatePanels()}
-            >
-              Beregn paneler
-            </button>
-            {errors.calculation && (
-              <span className="ml-4 text-red-500 text-sm whitespace-nowrap">
-                {errors.calculation}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* End of calculator */}
-        <div className="block md:hidden max-w-[32rem] mx-auto">
-          <PanelMengde
-            selectedPanelType={selectedPanelType}
-            totalPanels={totalPanels}
-          />
-        </div>
-      </div>
-
-      <div
-        className="md:col-span-2 flex flex-col items-center gap-6 mt-10 px-4"
-        ref={pricesRef}
-      >
-        <ul className="flex flex-col gap-4">
-          <li className="flex flex-col justify-between font-light relative gap-2">
-            <div className="flex flex-row gap-2">
-              <span
-                className="tooltip-icon cursor-pointer self-center"
-                onClick={() => toggleTooltip("1")}
-              >
-                i
-              </span>
-              {activeTooltip === "1" && (
-                <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
-                  Estimert produksjon i kWh er basert på data fra PVGIS, som
-                  bruker værdata fra perioden 2005–2020. Ønsker du et mer
-                  nøyaktig estimat på din produksjon? Be om et helt
-                  uforpliktende tilbud fra oss. Med et varmere klima og mer sol
-                  i Norge de siste årene, kan du også forvente enda høyere
-                  produksjon enn det historiske data viser.
-                </div>
-              )}
-              <p className="font-medium text-lg">
-                Din forventet årlig strømproduksjon (kWh):{" "}
-              </p>
-            </div>
-            <p className="text-2xl ml-12 font-bold">
-              = {""}
-              {new Intl.NumberFormat("nb-NO").format(
-                (yearlyProd * 0.95).toFixed(0),
-              )}{" "}
-              -{" "}
-              {new Intl.NumberFormat("nb-NO").format(
-                (yearlyProd * 1.05).toFixed(0),
-              )}{" "}
-              kWh
-            </p>
-            {/* Divider */}
-            <div className="divider"></div>
-          </li>
-          <li className="flex flex-col justify-between font-light relative gap-2">
-            <div className="flex flex-row gap-2">
-              <span
-                className="tooltip-icon cursor-pointer self-center"
-                onClick={() => toggleTooltip("2")}
-              >
-                i
-              </span>
-              {activeTooltip === "2" && (
-                <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
-                  Denne beregningen viser en estimert inntekt solcelleanlegget
-                  kan gi deg ved å redusere strømregningen. Bruk skyveknappen i
-                  boksen «Din estimerte gjennomsnittlige strømpris» for å
-                  justere og se hva du kan spare. Beregningen er basert på
-                  produksjon i kWh multiplisert med en estimert strømpris.
-                  Ønsker du et mer presist anslag? Be om et tilbud, så gir vi
-                  deg en tilpasset beregning av kWh-produksjonen for ditt hjem.
-                </div>
-              )}
-              <p className="font-medium text-lg">
-                Din forventet årlig besparelse/inntekt fra
-                solcelleanlegget:{" "}
-              </p>
-            </div>
-            <p className="text-2xl ml-12 font-bold">
-              = {""}
-              {new Intl.NumberFormat("nb-NO").format(
-                potentialSaving.toFixed(0),
-              )}{" "}
-              Kr
-            </p>
-            {/* Divider */}
-            <div className="divider"></div>
-          </li>
-          <li className="flex flex-col justify-between font-light relative gap-2">
-            <div className="flex flex-row gap-2">
-              <span
-                className="tooltip-icon cursor-pointer self-center"
-                onClick={() => toggleTooltip("3")}
-              >
-                i
-              </span>
-              {activeTooltip === "3" && (
-                <div className="tooltip-content absolute left-0 bottom-full mb-2 w-64 bg-black text-white p-2 rounded-md shadow-md">
-                  Denne beregningen viser hva solcelleanlegget vil koste deg per
-                  år over 30 år. Laveste sum gjelder direktekjøp, mens høyeste
-                  anslår kostnaden med miljølån. Be om et tilbud for konkrete
-                  tall på både direktekjøp og månedlige kostnader med
-                  finansiering.
-                </div>
-              )}
-
-              <p className="font-medium text-lg">
-                Årlig gjennomsnittskostnad for solcelleanlegget over 30 år:{" "}
-              </p>
-            </div>
-
-            <p className="text-2xl ml-12 font-bold">
-              = {new Intl.NumberFormat("nb-NO").format(yearlyCost.toFixed(0))} -{" "}
-              {new Intl.NumberFormat("nb-NO").format(yearlyCost2.toFixed(0))} Kr
-            </p>
-
-            {/* Divider */}
-            <div className="divider"></div>
-          </li>
-        </ul>
-        <button
-          className="bg-red-500 self-center w-48 py-1 rounded-md text-sm funky mb-12"
-          onClick={toggleModal}
-          disabled={isLoading || totalPanels < minPanels}
+        {/* Sidepanel */}
+        <aside
+          className="flex w-full flex-col gap-6 border-t p-4 lg:w-[27rem] lg:shrink-0 lg:overflow-y-auto lg:border-l lg:border-t-0"
+          style={{ borderColor: "var(--line)" }}
         >
-          Jeg ønsker uforpliktende tilbud
-        </button>
+          {/* Kilde og eventuell fallback */}
+          {mode === "google" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="tag">Takflatene er hentet automatisk</span>
+              <button
+                className="text-sm underline"
+                style={{ color: "var(--ink-soft)" }}
+                onClick={switchToDraw}
+              >
+                Tegn takflatene selv i stedet
+              </button>
+            </div>
+          )}
+
+          {mode === "draw" && (
+            <div className="flex flex-col gap-2">
+              <div className="note">{FALLBACK_TEXT[fallbackReason] ?? FALLBACK_TEXT.manuelt}</div>
+              {googleRoofs.length > 0 && (
+                <button
+                  className="self-start text-sm underline"
+                  style={{ color: "var(--ink-soft)" }}
+                  onClick={switchToGoogle}
+                >
+                  Tilbake til automatisk takanalyse
+                </button>
+              )}
+            </div>
+          )}
+
+          {detectedArrays > 0 && mode === "google" && (
+            <div className="note">
+              Vi ser {detectedArrays} eksisterende solcelleanlegg på dette taket.
+            </div>
+          )}
+
+          {/* 1 — Takflater */}
+          <section className="flex flex-col gap-3">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-lg font-semibold">Dine takflater</h2>
+              {viewRoofs.length > 0 && (
+                <span className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                  {viewRoofs.length} flater
+                </span>
+              )}
+            </div>
+
+            {viewRoofs.length === 0 ? (
+              <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                {mode === "loading"
+                  ? "Henter takdata…"
+                  : "Ingen takflater ennå. Tegn den første i kartet med polygonverktøyet øverst til venstre."}
+              </p>
+            ) : (
+              <RoofList
+                roofs={viewRoofs}
+                checked={checked}
+                panelCounts={panelCounts}
+                minPanels={MIN_PANELS}
+                onToggle={toggleRoof}
+                onCount={setCount}
+                onUpdate={handleRoofUpdate}
+                onDelete={handleRoofDelete}
+              />
+            )}
+          </section>
+
+          {/* 2 — Anlegget */}
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold">Ditt anlegg</h2>
+            <div className="card flex flex-col gap-4 p-4">
+              <SelectOption
+                title="Taktype"
+                options={ROOF_TYPES}
+                onSelect={setRoofType}
+              />
+              <SelectOption
+                title="Paneltype"
+                options={PANEL_TYPES}
+                onSelect={setPanelType}
+              />
+            </div>
+            <PanelMengde selectedPanelType={panelType} totalPanels={totalPanels} />
+            <PriceEstimator onSelect={setElPrice} />
+          </section>
+
+          {/* 3 — Behovskalkulator */}
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold">
+              Hvor mange paneler trenger du?
+            </h2>
+            <div className="card flex flex-col gap-4 p-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="card-title">Ditt årlige forbruk</label>
+                <div className="flex items-center gap-2">
+                  <Hint id="kwh" />
+                  <input
+                    type="number"
+                    className="field"
+                    value={desiredKwh}
+                    placeholder="27 500"
+                    onChange={(e) => setDesiredKwh(e.target.value)}
+                  />
+                  <span className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                    kWh
+                  </span>
+                </div>
+                {errors.kwh && (
+                  <p className="text-sm text-red-600">{errors.kwh}</p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="card-title">Ønsket dekningsgrad</label>
+                <div className="flex items-center gap-2">
+                  <Hint id="coverage" />
+                  <input
+                    type="number"
+                    className="field"
+                    min={0}
+                    max={100}
+                    value={coveragePercentage}
+                    onChange={(e) =>
+                      setCoveragePercentage(
+                        Math.min(100, Math.max(0, Number(e.target.value)))
+                      )
+                    }
+                  />
+                  <span className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                    %
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                Med {nb(desiredKwh || 27500)} kWh i forbruk anbefaler vi en egen
+                produksjon på{" "}
+                <b style={{ color: "var(--ink)" }}>
+                  {nb(((desiredKwh || 27500) * coveragePercentage) / 100)} kWh
+                </b>
+                .
+              </p>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => calculatePanels()}
+                  disabled={viewRoofs.length === 0}
+                >
+                  Beregn paneler for meg
+                </button>
+                {errors.calculation && (
+                  <span className="text-sm text-red-600">
+                    {errors.calculation}
+                  </span>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Oppsummering — festet nederst i panelet */}
+          <section
+            ref={summaryRef}
+            className="sticky bottom-0 -mx-4 mt-auto border-t px-4 pb-4 pt-4"
+            style={{ borderColor: "var(--line)", background: "var(--bg)" }}
+          >
+            <div className="card flex flex-col gap-3 p-4">
+              <div className="flex items-center justify-between">
+                <span className="card-title">Anlegget ditt</span>
+                <span className="tag">{totalPanels} paneler</span>
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-sm">
+                  <Hint id="prod" /> Årlig produksjon
+                </span>
+                <b className="text-right">
+                  {nb(yearlyProd * 0.95)}–{nb(yearlyProd * 1.05)} kWh
+                </b>
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-sm">
+                  <Hint id="saving" /> Årlig besparelse
+                </span>
+                <b>{nb(potentialSaving)} kr</b>
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-sm">
+                  <Hint id="cost" /> Årlig kostnad over 30 år
+                </span>
+                <b className="text-right">
+                  {priceLoading ? "beregner…" : `${nb(yearlyCost)}–${nb(yearlyCost2)} kr`}
+                </b>
+              </div>
+
+              <button
+                className="btn btn-primary w-full"
+                onClick={() => setShowModal(true)}
+                disabled={priceLoading || totalPanels < MIN_PANELS}
+              >
+                Jeg ønsker uforpliktende tilbud
+              </button>
+              {totalPanels < MIN_PANELS && (
+                <p className="text-center text-xs" style={{ color: "var(--ink-soft)" }}>
+                  Velg minst {MIN_PANELS} paneler for å be om tilbud.
+                </p>
+              )}
+            </div>
+          </section>
+        </aside>
       </div>
 
-      {/* End of info */}
       {showModal && (
         <>
-          <div className="overlay"></div>
+          <div className="overlay" onClick={() => setShowModal(false)} />
           <SendModal
-            onClose={handleCloseModal}
+            onClose={() => setShowModal(false)}
+            toggleModal={() => setShowModal(false)}
             checkedRoofData={checkedRoofData}
             totalPanels={totalPanels}
-            selectedElPrice={selectedElPrice}
-            selectedRoofType={selectedRoofType}
-            selectedPanelType={selectedPanelType}
+            selectedElPrice={elPrice}
+            selectedRoofType={roofType}
+            selectedPanelType={panelType}
             yearlyProd={yearlyProd}
             yearlyCost={yearlyCost}
             yearlyCost2={yearlyCost2}
             address={address}
-            toggleModal={toggleModal}
             site={site}
-            desiredKWh={desiredKWh}
+            desiredKWh={desiredKwh}
             coveragePercentage={coveragePercentage}
           />
         </>
       )}
-      {/* Map */}
     </div>
   );
 }

@@ -26,10 +26,12 @@ export async function GET(req) {
     systemLoss = 14;
   }
 
-  if (!lat || !lng || !panelCount || !aspect || !angle) {
+  // Note the explicit NaN checks: aspect 0 means due south and angle 0 means
+  // a flat roof, so a plain falsy test would reject two perfectly valid roofs.
+  if (!lat || !lng || !panelCount || Number.isNaN(aspect) || Number.isNaN(angle)) {
     return new Response(
       JSON.stringify({
-        error: "Manglende parametere: lat, lng, panelCount, azimuth eller tilt",
+        error: "Manglende parametere: lat, lng, panelCount, aspect eller angle",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
