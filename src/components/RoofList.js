@@ -28,13 +28,24 @@ function RoofList({
   minPanels,
   onToggle,
   onCount,
+  onCountCommit,
+  onAngleCommit,
   onUpdate,
   onDelete,
 }) {
   const [openInfo, setOpenInfo] = useState(null);
 
+  /* Skyveknappene fyrer `onChange` for hvert eneste steg mens man drar.
+     Veiledningen skal ikke reagere på det — den venter til draget er
+     sluppet, ellers hopper den videre idet man så vidt tar på knappen. */
+  const commitProps = (commit) => ({
+    onPointerUp: commit,
+    onTouchEnd: commit,
+    onKeyUp: commit,
+  });
+
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="flex flex-col gap-3" data-tour="roof-list">
       {roofs.map((roof, i) => {
         const on = !!checked[roof.id];
         const count = panelCounts[roof.id] ?? roof.maxPanels;
@@ -73,7 +84,9 @@ function RoofList({
                     {compassLabel(roof.direction)} · {Math.round(roof.angle)}°
                     helning · {nb(roof.area)} m²
                   </span>
-                  <span className="tag">{roof.rating.label}</span>
+                  <span className="tag whitespace-nowrap">
+                    {roof.rating.label}
+                  </span>
                 </div>
 
                 <p className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
@@ -107,7 +120,7 @@ function RoofList({
                 style={{ borderColor: "var(--line)" }}
               >
                 {/* Antall paneler */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3" data-tour="roof-panels">
                   <div className="relative">
                     <button
                       type="button"
@@ -147,6 +160,7 @@ function RoofList({
                     max={roof.maxPanels}
                     value={count}
                     onChange={(e) => onCount(roof.id, Number(e.target.value))}
+                    {...commitProps(() => onCountCommit?.(roof.id))}
                   />
                   <span
                     className="shrink-0 rounded-md px-2 py-1 text-center text-sm font-semibold"
@@ -163,7 +177,7 @@ function RoofList({
                 {/* Retning og helning settes bare for tegnede flater */}
                 {roof.source === "drawn" && (
                   <>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1.5" data-tour="roof-direction">
                       <p className="card-title">Himmelretning</p>
                       <div className="grid grid-cols-4 gap-1.5">
                         {DIRECTIONS.map(({ label, deg }) => {
@@ -188,7 +202,7 @@ function RoofList({
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1.5" data-tour="roof-angle">
                       <p className="card-title">Helning: {roof.angle}°</p>
                       <input
                         type="range"
@@ -198,6 +212,7 @@ function RoofList({
                         onChange={(e) =>
                           onUpdate(roof.id, { angle: Number(e.target.value) })
                         }
+                        {...commitProps(() => onAngleCommit?.(roof.id))}
                       />
                       <div
                         className="flex justify-between text-xs"

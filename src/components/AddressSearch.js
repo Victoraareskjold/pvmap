@@ -17,6 +17,7 @@ export default function AddressSearch({ variant = "hero", autoFocus = false }) {
   const searchParams = useSearchParams();
   const site = searchParams.get("site");
   const preAdr = searchParams.get("preAdr");
+  const aerial = searchParams.get("aerial");
 
   const [query, setQuery] = useState(preAdr || "");
   const [results, setResults] = useState([]);
@@ -82,6 +83,9 @@ export default function AddressSearch({ variant = "hero", autoFocus = false }) {
     if (address.id) params.set("addressId", String(address.id));
     if (site) params.set("site", site);
     if (preAdr) params.set("preAdr", preAdr);
+    // Søker brukeren på en ny adresse inne i iframen, skal innstillingen
+    // følge med — ellers slår flyfotoet seg på igjen ved første søk.
+    if (aerial) params.set("aerial", aerial);
 
     router.push(`/map?${params.toString()}`);
   };
@@ -90,16 +94,28 @@ export default function AddressSearch({ variant = "hero", autoFocus = false }) {
   const noHits = state === "done" && results.length === 0 && query.length >= 3;
 
   return (
-    <div ref={boxRef} className={`relative w-full ${compact ? "" : "max-w-xl"}`}>
+    <div
+      ref={boxRef}
+      className={`relative w-full ${compact ? "" : "max-w-xl"}`}
+    >
       <div
         className={`card flex items-center gap-3 ${
-          compact ? "px-3 py-1.5" : "px-4 py-3"
+          compact ? "px-3 py-1.5" : "px-5 py-4"
         }`}
+        style={
+          compact
+            ? undefined
+            : {
+                borderColor: "var(--accent)",
+                borderWidth: 2,
+                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.10)",
+              }
+        }
       >
         <svg
           viewBox="0 0 24 24"
           aria-hidden
-          className={compact ? "h-4 w-4" : "h-5 w-5"}
+          className={compact ? "h-4 w-4" : "h-6 w-6"}
           style={{ color: "var(--accent)", flexShrink: 0 }}
         >
           <path
@@ -118,7 +134,7 @@ export default function AddressSearch({ variant = "hero", autoFocus = false }) {
           }}
           placeholder="Søk på din adresse"
           className={`w-full bg-transparent outline-none ${
-            compact ? "text-sm" : "text-base"
+            compact ? "text-sm" : "text-lg font-medium"
           }`}
         />
         {state === "searching" && (

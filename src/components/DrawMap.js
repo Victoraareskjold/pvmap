@@ -20,6 +20,7 @@ export default function DrawMap({
   checked,
   onToggle,
   onRoofAdded,
+  onDrawStart,
 }) {
   const divRef = useRef(null);
   const mapRef = useRef(null);
@@ -27,12 +28,14 @@ export default function DrawMap({
 
   const onRoofAddedRef = useRef(onRoofAdded);
   const onToggleRef = useRef(onToggle);
+  const onDrawStartRef = useRef(onDrawStart);
   const checkedRef = useRef(checked);
   useEffect(() => {
     onRoofAddedRef.current = onRoofAdded;
     onToggleRef.current = onToggle;
+    onDrawStartRef.current = onDrawStart;
     checkedRef.current = checked;
-  }, [onRoofAdded, onToggle, checked]);
+  }, [onRoofAdded, onToggle, onDrawStart, checked]);
 
   useEffect(() => {
     if (!center || !divRef.current || mapRef.current) return;
@@ -43,20 +46,22 @@ export default function DrawMap({
     );
     mapRef.current = map;
 
+    // Begge lagene kommer fra Mapbox. CARTOs gratis basemap-CDN krever nøkkel
+    // nå og svarer "API key required", så kartvisningen bruker samme token
+    // som flyfotoet.
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    const aerial = L.tileLayer(
-      `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${token}`,
-      {
-        attribution: "© Mapbox © OpenStreetMap",
-        tileSize: 512,
-        zoomOffset: -1,
-        maxZoom: 22,
-      }
-    );
-    const plain = L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      { attribution: "© OpenStreetMap, © CARTO", maxZoom: 22 }
-    );
+    const mapboxLayer = (style) =>
+      L.tileLayer(
+        `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/{z}/{x}/{y}?access_token=${token}`,
+        {
+          attribution: "© Mapbox © OpenStreetMap",
+          tileSize: 512,
+          zoomOffset: -1,
+          maxZoom: 22,
+        }
+      );
+    const aerial = mapboxLayer("satellite-v9");
+    const plain = mapboxLayer("light-v11");
     aerial.addTo(map);
 
     const BaseToggle = L.Control.extend({
@@ -110,6 +115,8 @@ export default function DrawMap({
         edit: false,
       })
     );
+
+    map.on(L.Draw.Event.DRAWSTART, () => onDrawStartRef.current?.());
 
     map.on(L.Draw.Event.CREATED, (e) => {
       const layer = e.layer;

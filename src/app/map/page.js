@@ -10,6 +10,9 @@ import PriceEstimator from "@/components/PriceEstimator";
 import RoofList from "@/components/RoofList";
 import SelectOption from "@/components/SelectOption";
 import SendModal from "@/components/SendModal";
+import SolarCompass from "@/components/SolarCompass";
+import Tour from "@/components/Tour";
+import TourPrompt from "@/components/TourPrompt";
 import {
   FALLBACK_TEXT,
   MIN_PANELS,
@@ -19,35 +22,22 @@ import {
   roofsFromGoogle,
   updateDrawnRoof,
 } from "@/lib/roofs";
-import { rateSegment } from "@/lib/solar";
+import { RATING_SCALE } from "@/lib/solar";
+import getPriceByCount from "../../../helpers/getPriceByCount";
+import { calculatePricing } from "../../../hooks/calculatePricing";
+import { usePanelTypes } from "../../../hooks/usePanelTypes";
+import { usePricingData } from "../../../hooks/usePricingData";
+import { useRoofTypes } from "../../../hooks/useRoofTypes";
 
 const SolarMap = dynamic(() => import("@/components/SolarMap"), { ssr: false });
 const DrawMap = dynamic(() => import("@/components/DrawMap"), { ssr: false });
 
-const ROOF_TYPES = [
-  "Takstein (Dobbelkrummet)",
-  "Takstein (Enkeltkrummet)",
-  "Glassert takstein",
-  "Flat takstein",
-  "Shingel/Takpapp",
-  "Trapes",
-  "Flatt tak",
-  "Integrert i taket",
-  "Decra",
-  "Bølgeblikk",
-];
-const PANEL_TYPES = [
-  "Premium all black, 430W",
-  "Performance all black, 460W Bifacial",
-];
-
-const LEGEND = [
-  rateSegment(30, 180),
-  rateSegment(30, 90),
-  rateSegment(0, 180),
-  rateSegment(30, 135),
-  rateSegment(30, 0),
-];
+/**
+ * Uten `site` i URL-en vet vi ikke hvilken installatør besøket tilhører.
+ * Regnearket falt tilbake på Vest Elektro Sol i det tilfellet, og prisene
+ * her gjør det samme, så en direkte lenke til pvmap fortsatt gir et estimat.
+ */
+const DEFAULT_SITE = "vestelektrosol";
 
 const nb = (n) => new Intl.NumberFormat("nb-NO").format(Math.round(n || 0));
 
@@ -59,6 +49,12 @@ export default function MapPage() {
   const address = searchParams.get("address");
   const site = searchParams.get("site");
   const forceDraw = searchParams.get("draw") === "1";
+
+  /* Googles flyfoto er på for vanlige besøk. Dashboardet embedder pvmap i en
+     iframe og slår det av med ?aerial=0 — laget hentes da ikke i det hele
+     tatt, og knappen vises ikke. */
+  const aerialParam = searchParams.get("aerial");
+  const aerialEnabled = aerialParam !== "0" && aerialParam !== "false";
 
   const center = useMemo(
     () =>
@@ -78,14 +74,51 @@ export default function MapPage() {
   const [efficiency, setEfficiency] = useState({});
 
   // --- Choices ----------------------------------------------------------
-  const [roofType, setRoofType] = useState(ROOF_TYPES[0]);
-  const [panelType, setPanelType] = useState(PANEL_TYPES[0]);
+  // Tak- og paneltypene er de samme radene som prisene slås opp i, så begge
+  // listene kommer fra Supabase. Hardkodede lister ville før eller siden
+  // avvike fra navnene i basen, og da faller prisoppslaget tilbake til 0.
+  const { roofTypes } = useRoofTypes();
+  const { panelTypes } = usePanelTypes();
+  const pricingData = usePricingData(site || DEFAULT_SITE);
+
+  const [roofType, setRoofType] = useState("");
+  const [panelType, setPanelType] = useState("");
   const [elPrice, setElPrice] = useState(1.5);
+
+  /* Hva brukeren har rukket å gjøre. Veiledningen leser dette for å vite når
+     et steg er utført — den teller ikke klikk, den ser på resultatet. */
+  const [touched, setTouched] = useState({
+    panels: false,
+    direction: false,
+    angle: false,
+    types: false,
+  });
+
+  const chooseRoofType = useCallback((value) => {
+    setRoofType(value);
+    setTouched((t) => ({ ...t, types: true }));
+  }, []);
+
+  const choosePanelType = useCallback((value) => {
+    setPanelType(value);
+    setTouched((t) => ({ ...t, types: true }));
+  }, []);
+
+  useEffect(() => {
+    if (roofTypes.length > 0) setRoofType((prev) => prev || roofTypes[0].name);
+  }, [roofTypes]);
+
+  useEffect(() => {
+    if (panelTypes.length > 0) setPanelType((prev) => prev || panelTypes[0].NAVN);
+  }, [panelTypes]);
 
   // --- Economy ----------------------------------------------------------
   const [yearlyCost, setYearlyCost] = useState(0);
   const [yearlyCost2, setYearlyCost2] = useState(0);
-  const [priceLoading, setPriceLoading] = useState(false);
+  // Prisen regnes ut lokalt så snart tabellene er hentet — ingen runde til
+  // serveren per endring, slik regnearket krevde.
+  const priceLoading =
+    !pricingData || panelTypes.length === 0 || roofTypes.length === 0;
 
   const [desiredKwh, setDesiredKwh] = useState("");
   const [coveragePercentage, setCoveragePercentage] = useState(40);
@@ -181,7 +214,11 @@ export default function MapPage() {
       return;
     }
     let cancelled = false;
-    const watts = panelWatts(panelType);
+    // WATTAGE fra basen er fasiten; navneparsingen er bare en sikring hvis
+    // paneltabellen ennå ikke er lastet.
+    const watts =
+      panelTypes.find((p) => p.NAVN === panelType)?.WATTAGE ??
+      panelWatts(panelType);
 
     const timer = setTimeout(async () => {
       const list = roofsRef.current;
@@ -216,7 +253,7 @@ export default function MapPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [pvgisKey, panelType, center]);
+  }, [pvgisKey, panelType, panelTypes, center]);
 
   const viewRoofs = useMemo(
     () =>
@@ -251,40 +288,44 @@ export default function MapPage() {
     [viewRoofs, checked, panelCounts]
   );
 
-  // --- Price from the pricing sheet ------------------------------------
+  /* ------------------------------------------------------------------
+     Price, straight from Supabase.
+
+     Alle fire leddene slås opp på antall paneler i samme trinnskala
+     ("0-72", "72-150", …): panelprisen per stk, takprisen per stk fra
+     taktekket, installatørens fastbeløp og provisjonssatsen. Dashboardet
+     priser sine egne leads og skal ikke ha et estimat herfra.
+  ------------------------------------------------------------------ */
   useEffect(() => {
-    if (totalPanels === 0) {
+    if (site === "solarinstallationdashboard") return;
+    if (totalPanels === 0 || priceLoading) {
       setYearlyCost(0);
       setYearlyCost2(0);
       return;
     }
 
-    const timer = setTimeout(async () => {
-      setPriceLoading(true);
-      try {
-        const res = await fetch("/api/googleSheets", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            totalPanels,
-            selectedRoofType: roofType,
-            selectedPanelType: panelType,
-            site,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setYearlyCost(parseFloat(data.valueFromB2 || 0));
-          setYearlyCost2(parseFloat(data.valueFromE2 || 0));
-        }
-      } catch (e) {
-        console.error("Feil under henting av pris:", e);
-      }
-      setPriceLoading(false);
-    }, 500);
+    const panel = panelTypes.find((p) => p.NAVN === panelType);
+    const { yearlyCostDirect, yearlyCostLoan } = calculatePricing({
+      totalPanels,
+      panelPrice: getPriceByCount(panel, totalPanels),
+      roofPrice: roofTypes.find((r) => r.name === roofType)?.PRIS ?? 0,
+      installerPrice: getPriceByCount(pricingData.installer, totalPanels),
+      commissionRate: getPriceByCount(pricingData.commission, totalPanels),
+      formula: Number(pricingData.installer?.FORMEL) || 0,
+    });
 
-    return () => clearTimeout(timer);
-  }, [totalPanels, roofType, panelType, site]);
+    setYearlyCost(yearlyCostDirect);
+    setYearlyCost2(yearlyCostLoan);
+  }, [
+    totalPanels,
+    roofType,
+    panelType,
+    site,
+    pricingData,
+    panelTypes,
+    roofTypes,
+    priceLoading,
+  ]);
 
   // --- Roof interaction -------------------------------------------------
   const toggleRoof = useCallback((id, next) => {
@@ -298,6 +339,17 @@ export default function MapPage() {
     setPanelCounts((prev) => ({ ...prev, [id]: count }));
   }, []);
 
+  // Skyveknappene melder fra når draget slippes, ikke mens det pågår.
+  const commitCount = useCallback(
+    () => setTouched((t) => (t.panels ? t : { ...t, panels: true })),
+    []
+  );
+
+  const commitAngle = useCallback(
+    () => setTouched((t) => (t.angle ? t : { ...t, angle: true })),
+    []
+  );
+
   const handleRoofAdded = useCallback((drawing) => {
     const roof = roofFromDrawing(drawing);
     setDrawnRoofs((prev) => [...prev, roof]);
@@ -309,6 +361,11 @@ export default function MapPage() {
     setDrawnRoofs((prev) =>
       prev.map((r) => (r.id === id ? updateDrawnRoof(r, changes) : r))
     );
+    // Retning er knapper — der er klikket i seg selv handlingen. Helning er
+    // en skyveknapp, og den melder fra via commitAngle når draget slippes.
+    if ("direction" in changes) {
+      setTouched((t) => (t.direction ? t : { ...t, direction: true }));
+    }
   }, []);
 
   const handleRoofDelete = useCallback((id) => {
@@ -339,6 +396,144 @@ export default function MapPage() {
       return changed ? next : prev;
     });
   }, [roofs]);
+
+  /* ------------------------------------------------------------------
+     Interaktiv veiledning.
+
+     Stegene er delt i to fordi de to modusene krever ulikt av brukeren:
+     tegner man selv, må takflaten opprettes og retning/helning settes for
+     hånd — henter Google taket, er begge deler allerede målt.
+  ------------------------------------------------------------------ */
+  const [tourStep, setTourStep] = useState(-1);
+  const [promptSeen, setPromptSeen] = useState(true);
+  // Settes idet polygonverktøyet tas i bruk, så uthevingen slutter å dimme
+  // kartet man skal tegne i.
+  const [drawing, setDrawing] = useState(false);
+
+  useEffect(() => {
+    try {
+      setPromptSeen(localStorage.getItem("pvmap.tourSeen") === "1");
+    } catch {
+      /* privat nettleservindu — da spør vi bare ikke */
+    }
+  }, []);
+
+  const dismissPrompt = useCallback(() => {
+    setPromptSeen(true);
+    try {
+      localStorage.setItem("pvmap.tourSeen", "1");
+    } catch {
+      /* ignorer */
+    }
+  }, []);
+
+  const startTour = useCallback(() => {
+    dismissPrompt();
+    setTourStep(0);
+  }, [dismissPrompt]);
+
+  const tourSteps = useMemo(() => {
+    const drawing = mode === "draw";
+    const firstRoof = '[data-tour="roof-list"] > li:first-child';
+
+    const steps = drawing
+      ? [
+          {
+            id: "draw",
+            // Faller tilbake på hele verktøylinja hvis Leaflet.Draw skulle
+            // endre klassenavnet på polygonknappen.
+            selector: ".leaflet-draw-draw-polygon, .leaflet-draw-toolbar",
+            title: "Tegn den første takflaten",
+            body: "Klikk på polygonverktøyet, og klikk deretter rundt kanten av én takflate i kartet. Dobbeltklikk for å lukke figuren.",
+            waitFor: "Venter på at du tegner…",
+            dim: !drawing,
+            done: drawnRoofs.length > 0,
+          },
+          {
+            id: "direction",
+            selector: '[data-tour="roof-direction"]',
+            title: "Hvilken vei vender taket?",
+            body: "Velg himmelretningen flaten peker mot. Fargen på flaten oppdaterer seg med én gang — rødt er best, blått gir minst produksjon.",
+            waitFor: "Velg en retning…",
+            autoAdvance: false,
+            done: touched.direction,
+          },
+          {
+            id: "angle",
+            selector: '[data-tour="roof-angle"]',
+            title: "Sett takvinkelen",
+            body: "Dra skyveknappen til omtrent riktig helning. De fleste norske tak ligger mellom 20° og 35°.",
+            waitFor: "Juster helningen…",
+            done: touched.angle,
+          },
+        ]
+      : [
+          {
+            id: "roofs",
+            selector: firstRoof,
+            title: "Dette er takflatene dine",
+            body: "Google har målt opp taket ditt. Hak av flatene du vil ha paneler på — nordvendte flater er slått av på forhånd.",
+            done: true,
+          },
+        ];
+
+    return [
+      ...steps,
+      {
+        id: "panels",
+        selector: '[data-tour="roof-panels"]',
+        title: "Juster antall paneler",
+        body: "Dra skyveknappen for å velge hvor mange paneler som skal stå på flaten. Produksjonen oppdaterer seg mens du drar.",
+        waitFor: "Juster antallet…",
+        done: touched.panels,
+      },
+      {
+        id: "types",
+        selector: '[data-tour="system-types"]',
+        title: "Velg taktekke og paneltype",
+        body: "Taktekket avgjør monteringskostnaden, og paneltypen avgjør både pris og produksjon. Begge påvirker prisen under.",
+        waitFor: "Gjør et valg…",
+        autoAdvance: false,
+        done: touched.types,
+      },
+      {
+        id: "consumption",
+        selector: '[data-tour="consumption"]',
+        title: "Legg inn forbruket ditt",
+        body: "Skriv inn hvor mange kWh du bruker i året, så foreslår vi hvor mange paneler som dekker den andelen du ønsker.",
+        waitFor: "Skriv inn forbruket…",
+        autoAdvance: false,
+        done: String(desiredKwh).length > 0,
+      },
+      {
+        id: "summary",
+        selector: '[data-tour="summary"]',
+        title: "Her er resultatet",
+        body: "Årlig produksjon, hva du sparer, og hva anlegget koster fordelt over 30 år — direkte kjøp og med lån.",
+        // Rent informasjonssteg: ingenting å utføre, så knappen skal si
+        // «Neste», ikke «Hopp over».
+        done: true,
+      },
+      {
+        id: "quote",
+        selector: '[data-tour="quote"]',
+        title: "Klar for et tilbud?",
+        body: "Er du fornøyd med anlegget, ber du om et uforpliktende tilbud her. Vi tar ikke kontakt før du har spurt.",
+        done: showModal,
+      },
+    ];
+  }, [mode, drawing, drawnRoofs.length, touched, desiredKwh, showModal]);
+
+  const advanceTour = useCallback(
+    (next) => setTourStep(next < 0 || next >= tourSteps.length ? -1 : next),
+    [tourSteps.length]
+  );
+
+  // Bytter brukeren modus midt i veiledningen, endres antallet steg under
+  // føttene på oss — da avslutter vi heller enn å peke på tomme luften.
+  useEffect(() => {
+    if (tourStep >= tourSteps.length) setTourStep(-1);
+  }, [tourStep, tourSteps.length]);
 
   const switchToDraw = () => {
     setMode("draw");
@@ -453,6 +648,13 @@ export default function MapPage() {
         <div className="hidden w-72 md:block">
           <AddressSearch variant="compact" />
         </div>
+        <button
+          className="btn btn-secondary"
+          onClick={startTour}
+          title="Gå gjennom verktøyet steg for steg"
+        >
+          Veiledning
+        </button>
         <button className="btn btn-dark" onClick={() => router.push("/")}>
           Nytt søk
         </button>
@@ -477,6 +679,7 @@ export default function MapPage() {
               checked={checked}
               panelCounts={panelCounts}
               onToggle={toggleRoof}
+              aerial={aerialEnabled}
             />
           )}
 
@@ -487,14 +690,15 @@ export default function MapPage() {
               checked={checked}
               onToggle={toggleRoof}
               onRoofAdded={handleRoofAdded}
+              onDrawStart={() => setDrawing(true)}
             />
           )}
 
           {/* Fargeforklaring — samme skala uansett kilde */}
           {mode !== "loading" && (
-            <div className="card absolute bottom-3 right-3 z-20 hidden gap-1.5 p-3 md:flex md:flex-col">
-              <p className="card-title">Egnethet</p>
-              {LEGEND.map((r) => (
+            <div className="card absolute right-3 top-14 z-30 hidden gap-1.5 p-3 md:flex md:flex-col">
+              <p className="card-title">Solpotensial</p>
+              {RATING_SCALE.map((r) => (
                 <span key={r.key} className="flex items-center gap-2 text-xs">
                   <span
                     className="h-2.5 w-2.5 rounded-full"
@@ -503,6 +707,12 @@ export default function MapPage() {
                   {r.label}
                 </span>
               ))}
+              <div
+                className="mt-1 flex justify-center border-t pt-2"
+                style={{ borderColor: "var(--line)" }}
+              >
+                <SolarCompass size={116} />
+              </div>
             </div>
           )}
         </div>
@@ -572,6 +782,8 @@ export default function MapPage() {
                 minPanels={MIN_PANELS}
                 onToggle={toggleRoof}
                 onCount={setCount}
+                onCountCommit={commitCount}
+                onAngleCommit={commitAngle}
                 onUpdate={handleRoofUpdate}
                 onDelete={handleRoofDelete}
               />
@@ -581,16 +793,18 @@ export default function MapPage() {
           {/* 2 — Anlegget */}
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold">Ditt anlegg</h2>
-            <div className="card flex flex-col gap-4 p-4">
+            <div className="card flex flex-col gap-4 p-4" data-tour="system-types">
               <SelectOption
                 title="Taktype"
-                options={ROOF_TYPES}
-                onSelect={setRoofType}
+                options={roofTypes.map((r) => r.name)}
+                value={roofType}
+                onSelect={chooseRoofType}
               />
               <SelectOption
                 title="Paneltype"
-                options={PANEL_TYPES}
-                onSelect={setPanelType}
+                options={panelTypes.map((p) => p.NAVN)}
+                value={panelType}
+                onSelect={choosePanelType}
               />
             </div>
             <PanelMengde selectedPanelType={panelType} totalPanels={totalPanels} />
@@ -603,7 +817,7 @@ export default function MapPage() {
               Hvor mange paneler trenger du?
             </h2>
             <div className="card flex flex-col gap-4 p-4">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5" data-tour="consumption">
                 <label className="card-title">Ditt årlige forbruk</label>
                 <div className="flex items-center gap-2">
                   <Hint id="kwh" />
@@ -677,7 +891,7 @@ export default function MapPage() {
             className="sticky bottom-0 -mx-4 mt-auto border-t px-4 pb-4 pt-4"
             style={{ borderColor: "var(--line)", background: "var(--bg)" }}
           >
-            <div className="card flex flex-col gap-3 p-4">
+            <div className="card flex flex-col gap-3 p-4" data-tour="summary">
               <div className="flex items-center justify-between">
                 <span className="card-title">Anlegget ditt</span>
                 <span className="tag">{totalPanels} paneler</span>
@@ -710,6 +924,7 @@ export default function MapPage() {
 
               <button
                 className="btn btn-primary w-full"
+                data-tour="quote"
                 onClick={() => setShowModal(true)}
                 disabled={priceLoading || totalPanels < MIN_PANELS}
               >
@@ -724,6 +939,21 @@ export default function MapPage() {
           </section>
         </aside>
       </div>
+
+      {tourStep >= 0 && (
+        <Tour
+          steps={tourSteps}
+          index={tourStep}
+          onIndex={advanceTour}
+          onClose={() => setTourStep(-1)}
+        />
+      )}
+
+      {/* Tilbys først når kartet står klart, ellers peker første steg på et
+          tegneverktøy som ennå ikke finnes. */}
+      {!promptSeen && mode !== "loading" && tourStep < 0 && (
+        <TourPrompt onStart={startTour} onDismiss={dismissPrompt} />
+      )}
 
       {showModal && (
         <>

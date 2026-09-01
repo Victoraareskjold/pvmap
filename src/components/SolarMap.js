@@ -37,8 +37,8 @@ function loadGoogleMaps(key) {
       mapsLoader = null;
       reject(
         new Error(
-          "Kartet ble blokkert av nettleseren. Slå av annonseblokkeren for denne siden og last inn på nytt."
-        )
+          "Kartet ble blokkert av nettleseren. Slå av annonseblokkeren for denne siden og last inn på nytt.",
+        ),
       );
     };
     document.head.appendChild(script);
@@ -54,6 +54,7 @@ export default function SolarMap({
   checked,
   panelCounts,
   onToggle,
+  aerial = true,
 }) {
   const divRef = useRef(null);
   const mapRef = useRef(null);
@@ -66,8 +67,10 @@ export default function SolarMap({
 
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(null);
-  const [showAerial, setShowAerial] = useState(false);
+  const [showAerial, setShowAerial] = useState(aerial);
   const [aerialStatus, setAerialStatus] = useState(null);
+
+  useEffect(() => setShowAerial(aerial), [aerial]);
 
   const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
   const solarPotential = building?.solarPotential;
@@ -75,7 +78,9 @@ export default function SolarMap({
   // Google reports key problems through this global, not a rejected promise.
   useEffect(() => {
     window.gm_authFailure = () =>
-      setError("Google avviste kartnøkkelen. Kartet kan ikke vises akkurat nå.");
+      setError(
+        "Google avviste kartnøkkelen. Kartet kan ikke vises akkurat nå.",
+      );
     return () => {
       delete window.gm_authFailure;
     };
@@ -166,7 +171,7 @@ export default function SolarMap({
     Layers is the expensive SKU.
   */
   useEffect(() => {
-    if (!showAerial || !center || !ready) return;
+    if (!aerial || !showAerial || !center || !ready) return;
     let cancelled = false;
 
     setAerialStatus("henter…");
@@ -177,7 +182,7 @@ export default function SolarMap({
         overlayRef.current = new window.google.maps.GroundOverlay(
           canvas.toDataURL("image/png"),
           bounds,
-          { clickable: false, opacity: 1 }
+          { clickable: false, opacity: 1 },
         );
         overlayRef.current.setMap(mapRef.current);
         setAerialStatus(null);
@@ -189,7 +194,7 @@ export default function SolarMap({
     return () => {
       cancelled = true;
     };
-  }, [showAerial, center, ready]);
+  }, [aerial, showAerial, center, ready]);
 
   useEffect(() => {
     if (!showAerial) {
@@ -203,7 +208,8 @@ export default function SolarMap({
     return (
       <div className="map-surface flex items-center justify-center p-6 text-center text-sm">
         <p style={{ color: "var(--ink-soft)" }}>
-          {error ?? "Kartet er ikke konfigurert (NEXT_PUBLIC_GOOGLE_MAPS_KEY mangler)."}
+          {error ??
+            "Kartet er ikke konfigurert (NEXT_PUBLIC_GOOGLE_MAPS_KEY mangler)."}
         </p>
       </div>
     );
@@ -213,19 +219,27 @@ export default function SolarMap({
     <>
       <div ref={divRef} className="map-surface" />
 
-      <button
-        onClick={() => setShowAerial((v) => !v)}
-        className="btn btn-secondary absolute right-3 top-3 z-20 !px-3 !py-1.5 !text-xs"
-      >
-        {showAerial ? "Skjul Googles flyfoto" : "Vis Googles flyfoto"}
-        {aerialStatus && (
-          <span className="font-normal" style={{ color: "var(--accent-dark)" }}>
-            {aerialStatus}
-          </span>
-        )}
-      </button>
+      {/* Slås laget av med ?aerial=0, forsvinner knappen også. Data Layers er
+          den dyre SKU-en, og et skjult kall er ikke noe en innbygget visning
+          skal kunne klikke seg til. */}
+      {aerial && (
+        <button
+          onClick={() => setShowAerial((v) => !v)}
+          className="btn btn-secondary absolute right-3 top-3 z-30 !px-3 !py-1.5 !text-xs"
+        >
+          {showAerial ? "Skjul Googles flyfoto" : "Vis Googles flyfoto"}
+          {aerialStatus && (
+            <span
+              className="font-normal"
+              style={{ color: "var(--accent-dark)" }}
+            >
+              {aerialStatus}
+            </span>
+          )}
+        </button>
+      )}
 
-      <div className="pointer-events-none absolute bottom-1 left-1 z-20 rounded bg-black/55 px-2 py-0.5 text-[10px] text-white">
+      <div className="pointer-events-none absolute bottom-1 left-1 z-30 rounded bg-black/55 px-2 py-0.5 text-[10px] text-white">
         Source: Includes solar data from Google
       </div>
     </>

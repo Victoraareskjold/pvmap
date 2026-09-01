@@ -222,6 +222,11 @@ input[type="range"]:disabled {
 .map-surface {
   position: absolute;
   inset: 0;
+  /* Google Maps og Leaflet gir sine egne lag z-index i hundretusener. Uten
+     en z-index her lager ikke .map-surface en stacking context, og de lagene
+     konkurrerer direkte med overleggene våre (fargeforklaring, knapper) —
+     som da blir dekket så snart kartet er ferdig lastet. */
+  z-index: 0;
 }
 .leaflet-container {
   font-family: inherit;
@@ -229,17 +234,20 @@ input[type="range"]:disabled {
 
 /* --- Modal ------------------------------------------------------------- */
 
+/* Leaflet gir tegneverktøyet og panelene sine z-index opp til 1000. Modalen
+   må ligge over dem, ellers blir kontaktskjemaet usynlig i tegnemodus. */
 .overlay {
   position: fixed;
   inset: 0;
   background-color: rgba(20, 16, 12, 0.55);
-  z-index: 45;
+  z-index: 2000;
 }
 .modal {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  z-index: 2010;
 }
 
 /* Kept: SendModal's submit button uses this class. */

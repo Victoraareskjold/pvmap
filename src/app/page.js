@@ -24,11 +24,14 @@ export default function Home() {
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
           {/* Tekst og søk */}
           <div className="flex flex-col gap-6">
-            <span className="tag w-fit">Gratis og uforpliktende</span>
+            <span className="tag w-fit">Enkelt å komme i gang</span>
 
             <h1 className="text-4xl leading-tight md:text-5xl">
-              Finn ut om solenergi passer{" "}
-              <span style={{ color: "var(--accent-dark)" }}>ditt tak</span>.
+              Se hvor mye strøm{" "}
+              <span style={{ color: "var(--accent-dark)" }}>
+                taket ditt kan produsere
+              </span>
+              .
             </h1>
 
             <p
@@ -37,7 +40,7 @@ export default function Home() {
             >
               Skriv inn adressen din, så viser vi takflatene dine, hvor mye
               strøm de kan produsere og hva et anlegg vil koste. Utforsk i ditt
-              eget tempo — vi tar ikke kontakt før du ber om det.
+              eget tempo.
             </p>
 
             <AddressSearch variant="hero" autoFocus />
@@ -54,7 +57,7 @@ export default function Home() {
             style={{ aspectRatio: "4 / 3" }}
           >
             <img
-              src="/solarIllustration.jpg"
+              src="/solarexample.png"
               alt="Solcelleanlegg på tak"
               className="h-full w-full object-cover"
             />

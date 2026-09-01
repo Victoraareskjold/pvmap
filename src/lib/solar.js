@@ -84,19 +84,42 @@ export function compassLabel(azimuth) {
 }
 
 /**
+ * The colour scale for solar potential — red is best, blue is worst, the same
+ * way Google renders its own flux layers. One list, used by the map polygons,
+ * the roof list, the legend and the compass, for both data sources.
+ *
+ * The bands are 45° wide and centred on the eight compass points, so a roof
+ * facing due east lands in the same band as the compass' Ø arm.
+ */
+export const RATINGS = {
+  excellent: { key: "excellent", label: "Svært godt egnet", color: "#c0392b", rank: 1 },
+  good: { key: "good", label: "Godt egnet", color: "#e8703a", rank: 2 },
+  moderate: { key: "moderate", label: "Middels egnet", color: "#f5b841", rank: 3 },
+  low: { key: "low", label: "Mindre egnet", color: "#8ede4a", rank: 4 },
+  north: { key: "north", label: "Lite egnet", color: "#4a6fb5", rank: 5 },
+};
+
+/** Legend order: best first. */
+export const RATING_SCALE = [
+  RATINGS.excellent,
+  RATINGS.good,
+  RATINGS.moderate,
+  RATINGS.low,
+  RATINGS.north,
+];
+
+/**
  * Verdict for a roof segment. Flat roofs are handled separately — direction
  * does not matter there, the panels get tilted up regardless.
  */
 export function rateSegment(pitch, azimuth) {
-  if (pitch < 5)
-    return { key: "flat", label: "Flatt tak", color: "#eab308", rank: 2 };
+  if (pitch < 5) return RATINGS.moderate;
   const d = deviationFromSouth(azimuth);
-  if (d <= 45)
-    return { key: "excellent", label: "Svært god", color: "#16a34a", rank: 1 };
-  if (d <= 90) return { key: "good", label: "God", color: "#84cc16", rank: 2 };
-  if (d <= 135)
-    return { key: "fair", label: "Middels", color: "#f97316", rank: 3 };
-  return { key: "north", label: "Nordvendt", color: "#dc2626", rank: 4 };
+  if (d <= 22.5) return RATINGS.excellent;
+  if (d <= 67.5) return RATINGS.good;
+  if (d <= 112.5) return RATINGS.moderate;
+  if (d <= 157.5) return RATINGS.low;
+  return RATINGS.north;
 }
 
 /** Segments below this area are chimneys, vents and noise — not roof. */

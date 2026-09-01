@@ -16,8 +16,9 @@ export function calculatePricing({
   // Add installer
   const withInstaller = base + installerPrice;
 
-  // Add commission instead of multiplying
-  const totalBeforeVAT = withInstaller + commissionRate;
+  // Provisjonen er en sats (1,24 = 24 % påslag), ikke et kronebeløp — lagt
+  // til som addend ville den flyttet totalen med drøyt én krone.
+  const totalBeforeVAT = withInstaller * commissionRate;
 
   // Apply formula multiplier
   const totalCost = (totalBeforeVAT + formula) * 1.25; // 1.25 for mva
