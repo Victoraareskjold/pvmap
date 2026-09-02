@@ -25,8 +25,22 @@ export async function GET(req) {
       .select(`"0-72", "72-150", "150-300", "300-600", "600-1000", "1000+"`),
   ]);
 
-  if (installerRes.error || commissionRes.error) {
-    return NextResponse.json({ error: "DB error" }, { status: 500 });
+  // `.single()` feiler når ingen rad har denne siten, og den feilen så
+  // nøyaktig ut som en nedetid i basen. Si hvilket oppslag som røk.
+  if (installerRes.error) {
+    console.error("installer_groups:", site.toLowerCase(), installerRes.error);
+    return NextResponse.json(
+      { error: `Fant ingen installatør «${site}»: ${installerRes.error.message}` },
+      { status: 500 },
+    );
+  }
+
+  if (commissionRes.error) {
+    console.error("commissions:", commissionRes.error);
+    return NextResponse.json(
+      { error: `Provisjonssatser mangler: ${commissionRes.error.message}` },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({

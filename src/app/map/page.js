@@ -37,7 +37,7 @@ const DrawMap = dynamic(() => import("@/components/DrawMap"), { ssr: false });
  * Regnearket falt tilbake på Vest Elektro Sol i det tilfellet, og prisene
  * her gjør det samme, så en direkte lenke til pvmap fortsatt gir et estimat.
  */
-const DEFAULT_SITE = "vestelektrosol";
+const DEFAULT_SITE = "example";
 
 const nb = (n) => new Intl.NumberFormat("nb-NO").format(Math.round(n || 0));
 
@@ -47,7 +47,10 @@ export default function MapPage() {
   const lat = searchParams.get("lat");
   const lng = searchParams.get("lng");
   const address = searchParams.get("address");
-  const site = searchParams.get("site");
+  // Mangler `site` i URL-en (typisk under testing) faller alt tilbake på
+  // standardinstallatøren — ikke bare prisoppslaget. Med `null` videre i
+  // appen sto prisen på 0 og lead-innsendingen krasjet på `site.toLowerCase()`.
+  const site = searchParams.get("site") || DEFAULT_SITE;
   const forceDraw = searchParams.get("draw") === "1";
 
   /* Googles flyfoto er på for vanlige besøk. Dashboardet embedder pvmap i en
@@ -57,9 +60,8 @@ export default function MapPage() {
   const aerialEnabled = aerialParam !== "0" && aerialParam !== "false";
 
   const center = useMemo(
-    () =>
-      lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : null,
-    [lat, lng]
+    () => (lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : null),
+    [lat, lng],
   );
 
   // --- Roofs and source -------------------------------------------------
@@ -79,7 +81,7 @@ export default function MapPage() {
   // avvike fra navnene i basen, og da faller prisoppslaget tilbake til 0.
   const { roofTypes } = useRoofTypes();
   const { panelTypes } = usePanelTypes();
-  const pricingData = usePricingData(site || DEFAULT_SITE);
+  const { pricingData, priceError } = usePricingData(site);
 
   const [roofType, setRoofType] = useState("");
   const [panelType, setPanelType] = useState("");
@@ -109,7 +111,8 @@ export default function MapPage() {
   }, [roofTypes]);
 
   useEffect(() => {
-    if (panelTypes.length > 0) setPanelType((prev) => prev || panelTypes[0].NAVN);
+    if (panelTypes.length > 0)
+      setPanelType((prev) => prev || panelTypes[0].NAVN);
   }, [panelTypes]);
 
   // --- Economy ----------------------------------------------------------
@@ -146,7 +149,9 @@ export default function MapPage() {
 
     (async () => {
       try {
-        const res = await fetch(`/api/solar?lat=${center.lat}&lng=${center.lng}`);
+        const res = await fetch(
+          `/api/solar?lat=${center.lat}&lng=${center.lng}`,
+        );
         const data = await res.json();
         if (cancelled) return;
 
@@ -159,11 +164,11 @@ export default function MapPage() {
             // sold in, but the user can still switch them on.
             setChecked(
               Object.fromEntries(
-                roofs.map((r) => [r.id, r.rating.key !== "north"])
-              )
+                roofs.map((r) => [r.id, r.rating.key !== "north"]),
+              ),
             );
             setPanelCounts(
-              Object.fromEntries(roofs.map((r) => [r.id, r.maxPanels]))
+              Object.fromEntries(roofs.map((r) => [r.id, r.maxPanels])),
             );
             setMode("google");
             return;
@@ -202,10 +207,10 @@ export default function MapPage() {
       roofs
         .map(
           (r) =>
-            `${r.id}:${Math.round(r.direction)}:${Math.round(r.angle)}:${r.maxPanels}`
+            `${r.id}:${Math.round(r.direction)}:${Math.round(r.angle)}:${r.maxPanels}`,
         )
         .join("|"),
-    [roofs]
+    [roofs],
   );
 
   useEffect(() => {
@@ -243,7 +248,7 @@ export default function MapPage() {
           } catch {
             /* roof keeps efficiency 0 and is shown as "beregner…" */
           }
-        })
+        }),
       );
 
       if (!cancelled) setEfficiency(result);
@@ -258,19 +263,21 @@ export default function MapPage() {
   const viewRoofs = useMemo(
     () =>
       roofs.map((r) => ({ ...r, efficiencyPerPanel: efficiency[r.id] ?? 0 })),
-    [roofs, efficiency]
+    [roofs, efficiency],
   );
 
   // --- Totals -----------------------------------------------------------
   const totalPanels = viewRoofs.reduce(
-    (sum, r) => sum + (checked[r.id] ? panelCounts[r.id] ?? 0 : 0),
-    0
+    (sum, r) => sum + (checked[r.id] ? (panelCounts[r.id] ?? 0) : 0),
+    0,
   );
   const yearlyProd = viewRoofs.reduce(
     (sum, r) =>
       sum +
-      (checked[r.id] ? (r.efficiencyPerPanel || 0) * (panelCounts[r.id] ?? 0) : 0),
-    0
+      (checked[r.id]
+        ? (r.efficiencyPerPanel || 0) * (panelCounts[r.id] ?? 0)
+        : 0),
+    0,
   );
   const potentialSaving = yearlyProd * elPrice;
 
@@ -285,7 +292,7 @@ export default function MapPage() {
           direction: r.direction,
           angle: r.angle,
         })),
-    [viewRoofs, checked, panelCounts]
+    [viewRoofs, checked, panelCounts],
   );
 
   /* ------------------------------------------------------------------
@@ -342,12 +349,12 @@ export default function MapPage() {
   // Skyveknappene melder fra når draget slippes, ikke mens det pågår.
   const commitCount = useCallback(
     () => setTouched((t) => (t.panels ? t : { ...t, panels: true })),
-    []
+    [],
   );
 
   const commitAngle = useCallback(
     () => setTouched((t) => (t.angle ? t : { ...t, angle: true })),
-    []
+    [],
   );
 
   const handleRoofAdded = useCallback((drawing) => {
@@ -359,7 +366,7 @@ export default function MapPage() {
 
   const handleRoofUpdate = useCallback((id, changes) => {
     setDrawnRoofs((prev) =>
-      prev.map((r) => (r.id === id ? updateDrawnRoof(r, changes) : r))
+      prev.map((r) => (r.id === id ? updateDrawnRoof(r, changes) : r)),
     );
     // Retning er knapper — der er klikket i seg selv handlingen. Helning er
     // en skyveknapp, og den melder fra via commitAngle når draget slippes.
@@ -526,7 +533,7 @@ export default function MapPage() {
 
   const advanceTour = useCallback(
     (next) => setTourStep(next < 0 || next >= tourSteps.length ? -1 : next),
-    [tourSteps.length]
+    [tourSteps.length],
   );
 
   // Bytter brukeren modus midt i veiledningen, endres antallet steg under
@@ -549,7 +556,10 @@ export default function MapPage() {
   const calculatePanels = (override = null) => {
     const wanted = Number(override ?? desiredKwh);
     if (!wanted || wanted <= 0 || Number.isNaN(wanted)) {
-      setErrors({ kwh: "Skriv inn ønsket årlig strømforbruk (kWh).", calculation: "" });
+      setErrors({
+        kwh: "Skriv inn ønsket årlig strømforbruk (kWh).",
+        calculation: "",
+      });
       return;
     }
     setErrors({ kwh: "", calculation: "" });
@@ -557,7 +567,7 @@ export default function MapPage() {
     const need = (wanted * coveragePercentage) / 100;
     const capacity = viewRoofs.reduce(
       (sum, r) => sum + (r.efficiencyPerPanel || 0) * r.maxPanels,
-      0
+      0,
     );
 
     if (need > capacity) {
@@ -576,12 +586,12 @@ export default function MapPage() {
     const nextCounts = {};
 
     for (const roof of [...viewRoofs].sort(
-      (a, b) => (b.efficiencyPerPanel || 0) - (a.efficiencyPerPanel || 0)
+      (a, b) => (b.efficiencyPerPanel || 0) - (a.efficiencyPerPanel || 0),
     )) {
       if (remaining <= 0) break;
       const panels = Math.min(
         Math.ceil(remaining / (roof.efficiencyPerPanel || 1)),
-        roof.maxPanels
+        roof.maxPanels,
       );
       if (panels > 0) {
         nextChecked[roof.id] = true;
@@ -738,7 +748,9 @@ export default function MapPage() {
 
           {mode === "draw" && (
             <div className="flex flex-col gap-2">
-              <div className="note">{FALLBACK_TEXT[fallbackReason] ?? FALLBACK_TEXT.manuelt}</div>
+              <div className="note">
+                {FALLBACK_TEXT[fallbackReason] ?? FALLBACK_TEXT.manuelt}
+              </div>
               {googleRoofs.length > 0 && (
                 <button
                   className="self-start text-sm underline"
@@ -753,7 +765,8 @@ export default function MapPage() {
 
           {detectedArrays > 0 && mode === "google" && (
             <div className="note">
-              Vi ser {detectedArrays} eksisterende solcelleanlegg på dette taket.
+              Vi ser {detectedArrays} eksisterende solcelleanlegg på dette
+              taket.
             </div>
           )}
 
@@ -793,7 +806,10 @@ export default function MapPage() {
           {/* 2 — Anlegget */}
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold">Ditt anlegg</h2>
-            <div className="card flex flex-col gap-4 p-4" data-tour="system-types">
+            <div
+              className="card flex flex-col gap-4 p-4"
+              data-tour="system-types"
+            >
               <SelectOption
                 title="Taktype"
                 options={roofTypes.map((r) => r.name)}
@@ -807,7 +823,10 @@ export default function MapPage() {
                 onSelect={choosePanelType}
               />
             </div>
-            <PanelMengde selectedPanelType={panelType} totalPanels={totalPanels} />
+            <PanelMengde
+              selectedPanelType={panelType}
+              totalPanels={totalPanels}
+            />
             <PriceEstimator onSelect={setElPrice} />
           </section>
 
@@ -828,7 +847,10 @@ export default function MapPage() {
                     placeholder="27 500"
                     onChange={(e) => setDesiredKwh(e.target.value)}
                   />
-                  <span className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                  <span
+                    className="text-sm"
+                    style={{ color: "var(--ink-soft)" }}
+                  >
                     kWh
                   </span>
                 </div>
@@ -849,11 +871,14 @@ export default function MapPage() {
                     value={coveragePercentage}
                     onChange={(e) =>
                       setCoveragePercentage(
-                        Math.min(100, Math.max(0, Number(e.target.value)))
+                        Math.min(100, Math.max(0, Number(e.target.value))),
                       )
                     }
                   />
-                  <span className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                  <span
+                    className="text-sm"
+                    style={{ color: "var(--ink-soft)" }}
+                  >
                     %
                   </span>
                 </div>
@@ -918,7 +943,11 @@ export default function MapPage() {
                   <Hint id="cost" /> Årlig kostnad over 30 år
                 </span>
                 <b className="text-right">
-                  {priceLoading ? "beregner…" : `${nb(yearlyCost)}–${nb(yearlyCost2)} kr`}
+                  {priceError
+                    ? "utilgjengelig"
+                    : priceLoading
+                      ? "beregner…"
+                      : `${nb(yearlyCost)}–${nb(yearlyCost2)} kr`}
                 </b>
               </div>
 
@@ -931,7 +960,10 @@ export default function MapPage() {
                 Jeg ønsker uforpliktende tilbud
               </button>
               {totalPanels < MIN_PANELS && (
-                <p className="text-center text-xs" style={{ color: "var(--ink-soft)" }}>
+                <p
+                  className="text-center text-xs"
+                  style={{ color: "var(--ink-soft)" }}
+                >
                   Velg minst {MIN_PANELS} paneler for å be om tilbud.
                 </p>
               )}
