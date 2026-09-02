@@ -281,7 +281,8 @@ export default function MapPage() {
     () => viewRoofs.filter((r) => isRoofEligible(r) && checked[r.id]),
     [viewRoofs, checked],
   );
-  const excludedCount = viewRoofs.length - viewRoofs.filter(isRoofEligible).length;
+  const excludedCount =
+    viewRoofs.length - viewRoofs.filter(isRoofEligible).length;
 
   const totalPanels = activeRoofs.reduce(
     (sum, r) => sum + (panelCounts[r.id] ?? 0),
@@ -295,14 +296,13 @@ export default function MapPage() {
 
   const checkedRoofData = useMemo(
     () =>
-      activeRoofs
-        .map((r) => ({
-          roofId: r.id,
-          adjustedPanelCount: panelCounts[r.id] ?? r.maxPanels,
-          maxPanels: r.maxPanels,
-          direction: r.direction,
-          angle: r.angle,
-        })),
+      activeRoofs.map((r) => ({
+        roofId: r.id,
+        adjustedPanelCount: panelCounts[r.id] ?? r.maxPanels,
+        maxPanels: r.maxPanels,
+        direction: r.direction,
+        angle: r.angle,
+      })),
     [activeRoofs, panelCounts],
   );
 
@@ -871,6 +871,10 @@ export default function MapPage() {
             <PanelMengde
               selectedPanelType={panelType}
               totalPanels={totalPanels}
+              description={
+                panelTypes.find((p) => p.NAVN === panelType)?.description ??
+                "Mangler beskrivelse"
+              }
             />
             <PriceEstimator onSelect={setElPrice} />
           </section>

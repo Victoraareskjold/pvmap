@@ -3,7 +3,12 @@ import { useEffect, useState } from "react";
 /**
  *
  * @returns {{
- *   panelTypes: Array<{ NAVN: string, PRIS: number, WATTAGE: number }>,
+ *   panelTypes: Array<{
+ *     NAVN: string,
+ *     PRIS: number,
+ *     WATTAGE: number,
+ *     description?: string,
+ *   }>,
  *   isLoading: boolean,
  *   error: string | null
  * }}
