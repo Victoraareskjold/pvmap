@@ -16,6 +16,7 @@ import TourPrompt from "@/components/TourPrompt";
 import {
   FALLBACK_TEXT,
   MIN_PANELS,
+  isRoofEligible,
   panelWatts,
   pvgisAspect,
   roofFromDrawing,
@@ -161,10 +162,15 @@ export default function MapPage() {
             setBuilding(data.building);
             setGoogleRoofs(roofs);
             // North-facing planes are off by default — they should not be
-            // sold in, but the user can still switch them on.
+            // sold in, but the user can still switch them on. Flater uten
+            // plass til nok paneler er av og kan ikke slås på i det hele
+            // tatt; de skal ikke bidra til totalen.
             setChecked(
               Object.fromEntries(
-                roofs.map((r) => [r.id, r.rating.key !== "north"]),
+                roofs.map((r) => [
+                  r.id,
+                  isRoofEligible(r) && r.rating.key !== "north",
+                ]),
               ),
             );
             setPanelCounts(
@@ -267,24 +273,29 @@ export default function MapPage() {
   );
 
   // --- Totals -----------------------------------------------------------
-  const totalPanels = viewRoofs.reduce(
-    (sum, r) => sum + (checked[r.id] ? (panelCounts[r.id] ?? 0) : 0),
+  /* Bare flater som er både store nok og haket av teller. Kriteriet gjentas
+     her selv om for små flater holdes uhaket lenger nede — totalen er tallet
+     brukeren ser og prisen regnes av, og den skal aldri kunne dra med seg en
+     flate listen har krysset ut. */
+  const activeRoofs = useMemo(
+    () => viewRoofs.filter((r) => isRoofEligible(r) && checked[r.id]),
+    [viewRoofs, checked],
+  );
+  const excludedCount = viewRoofs.length - viewRoofs.filter(isRoofEligible).length;
+
+  const totalPanels = activeRoofs.reduce(
+    (sum, r) => sum + (panelCounts[r.id] ?? 0),
     0,
   );
-  const yearlyProd = viewRoofs.reduce(
-    (sum, r) =>
-      sum +
-      (checked[r.id]
-        ? (r.efficiencyPerPanel || 0) * (panelCounts[r.id] ?? 0)
-        : 0),
+  const yearlyProd = activeRoofs.reduce(
+    (sum, r) => sum + (r.efficiencyPerPanel || 0) * (panelCounts[r.id] ?? 0),
     0,
   );
   const potentialSaving = yearlyProd * elPrice;
 
   const checkedRoofData = useMemo(
     () =>
-      viewRoofs
-        .filter((r) => checked[r.id])
+      activeRoofs
         .map((r) => ({
           roofId: r.id,
           adjustedPanelCount: panelCounts[r.id] ?? r.maxPanels,
@@ -292,7 +303,7 @@ export default function MapPage() {
           direction: r.direction,
           angle: r.angle,
         })),
-    [viewRoofs, checked, panelCounts],
+    [activeRoofs, panelCounts],
   );
 
   /* ------------------------------------------------------------------
@@ -336,6 +347,10 @@ export default function MapPage() {
 
   // --- Roof interaction -------------------------------------------------
   const toggleRoof = useCallback((id, next) => {
+    // Kartet lar deg klikke rett på panelene. Er flaten for liten, skal det
+    // klikket ikke kunne slå den på — den er krysset ut i listen.
+    const roof = roofsRef.current.find((r) => r.id === id);
+    if (roof && !isRoofEligible(roof)) return;
     setChecked((prev) => {
       const on = next ?? !prev[id];
       return { ...prev, [id]: on };
@@ -360,7 +375,9 @@ export default function MapPage() {
   const handleRoofAdded = useCallback((drawing) => {
     const roof = roofFromDrawing(drawing);
     setDrawnRoofs((prev) => [...prev, roof]);
-    setChecked((prev) => ({ ...prev, [roof.id]: true }));
+    // En nytegnet flate som er for liten krysses ut med én gang i stedet for
+    // å legge paneler til totalen brukeren så må finne og fjerne selv.
+    setChecked((prev) => ({ ...prev, [roof.id]: isRoofEligible(roof) }));
     setPanelCounts((prev) => ({ ...prev, [roof.id]: roof.maxPanels }));
   }, []);
 
@@ -397,6 +414,23 @@ export default function MapPage() {
       for (const roof of roofs) {
         if (next[roof.id] === undefined || next[roof.id] > roof.maxPanels) {
           next[roof.id] = roof.maxPanels;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [roofs]);
+
+  /* Kapasiteten til en tegnet flate endrer seg med helningen, så en flate kan
+     falle under grensen etter at den ble haket av. Da tas den ut av totalen
+     her — listen krysser den ut samtidig. */
+  useEffect(() => {
+    setChecked((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const roof of roofs) {
+        if (next[roof.id] && !isRoofEligible(roof)) {
+          next[roof.id] = false;
           changed = true;
         }
       }
@@ -565,7 +599,10 @@ export default function MapPage() {
     setErrors({ kwh: "", calculation: "" });
 
     const need = (wanted * coveragePercentage) / 100;
-    const capacity = viewRoofs.reduce(
+    // For små flater er ikke tilgjengelig kapasitet — verken i taket for hvor
+    // mye adressen kan dekke eller i fordelingen under.
+    const usable = viewRoofs.filter(isRoofEligible);
+    const capacity = usable.reduce(
       (sum, r) => sum + (r.efficiencyPerPanel || 0) * r.maxPanels,
       0,
     );
@@ -585,7 +622,7 @@ export default function MapPage() {
     const nextChecked = {};
     const nextCounts = {};
 
-    for (const roof of [...viewRoofs].sort(
+    for (const roof of [...usable].sort(
       (a, b) => (b.efficiencyPerPanel || 0) - (a.efficiencyPerPanel || 0),
     )) {
       if (remaining <= 0) break;
@@ -780,6 +817,14 @@ export default function MapPage() {
                 </span>
               )}
             </div>
+
+            {excludedCount > 0 && (
+              <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                {excludedCount === 1
+                  ? "Én flate har ikke plass til nok paneler og er krysset ut — den er ikke med i totalen."
+                  : `${excludedCount} flater har ikke plass til nok paneler og er krysset ut — de er ikke med i totalen.`}
+              </p>
+            )}
 
             {viewRoofs.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--ink-soft)" }}>

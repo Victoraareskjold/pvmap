@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { panelCorners } from "@/lib/solar";
+import { isRoofEligible } from "@/lib/roofs";
 import { loadRgbOverlay } from "@/lib/geotiffOverlay";
 
 /**
@@ -127,7 +128,11 @@ export default function SolarMap({
     const bounds = new maps.LatLngBounds();
 
     for (const roof of roofs) {
-      const on = !!checked[roof.id];
+      // For små flater er krysset ut i listen og teller ikke med. Panelene
+      // deres tegnes som svake omriss så man ser at plassen er vurdert, men
+      // de kan ikke fylles eller klikkes på.
+      const eligible = isRoofEligible(roof);
+      const on = eligible && !!checked[roof.id];
       const count = panelCounts[roof.id] ?? roof.maxPanels;
 
       roof.panels.forEach((panel, i) => {
@@ -141,14 +146,16 @@ export default function SolarMap({
         const shape = new maps.Polygon({
           paths: corners,
           strokeColor: active ? "#0b1220" : "#ffffff",
-          strokeOpacity: active ? 1 : 0.35,
+          strokeOpacity: active ? 1 : eligible ? 0.35 : 0.2,
           strokeWeight: active ? 0.6 : 0.5,
           fillColor: roof.rating.color,
           fillOpacity: active ? 0.92 : 0,
+          clickable: eligible,
           map: mapRef.current,
           zIndex: active ? 2 : 1,
         });
-        shape.addListener("click", () => onToggleRef.current(roof.id));
+        if (eligible)
+          shape.addListener("click", () => onToggleRef.current(roof.id));
         shapesRef.current.push(shape);
       });
     }

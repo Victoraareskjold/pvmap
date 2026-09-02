@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import "leaflet-draw";
 import { useEffect, useRef } from "react";
+import { isRoofEligible } from "@/lib/roofs";
 
 /**
  * Leaflet map where the user outlines the roof planes themselves.
@@ -30,12 +31,16 @@ export default function DrawMap({
   const onToggleRef = useRef(onToggle);
   const onDrawStartRef = useRef(onDrawStart);
   const checkedRef = useRef(checked);
+  // Klikkhåndtereren festes én gang per lag, så den må slå opp flaten på nytt
+  // for å se dagens kapasitet — helningen kan ha endret seg siden.
+  const roofsRef = useRef(roofs);
   useEffect(() => {
     onRoofAddedRef.current = onRoofAdded;
     onToggleRef.current = onToggle;
     onDrawStartRef.current = onDrawStart;
     checkedRef.current = checked;
-  }, [onRoofAdded, onToggle, onDrawStart, checked]);
+    roofsRef.current = roofs;
+  }, [onRoofAdded, onToggle, onDrawStart, checked, roofs]);
 
   useEffect(() => {
     if (!center || !divRef.current || mapRef.current) return;
@@ -159,16 +164,24 @@ export default function DrawMap({
         layer = roof._layer;
         layersRef.current[roof.id] = layer;
         layer.addTo(map);
-        layer.on("click", () => onToggleRef.current(roof.id));
+        layer.on("click", () => {
+          const current = roofsRef.current.find((r) => r.id === roof.id);
+          if (current && !isRoofEligible(current)) return;
+          onToggleRef.current(roof.id);
+        });
       }
       if (!layer) continue;
 
-      const on = !!checked[roof.id];
+      // For liten flate: stiplet omriss uten fyll, samme signal som krysset i
+      // listen. Den kan verken klikkes på eller telle med.
+      const eligible = isRoofEligible(roof);
+      const on = eligible && !!checked[roof.id];
       layer.setStyle({
-        color: on ? "#1b1815" : "#ffffff",
+        color: eligible ? (on ? "#1b1815" : "#ffffff") : "#8a8378",
         weight: on ? 3 : 1.5,
+        dashArray: eligible ? null : "4 4",
         fillColor: roof.rating.color,
-        fillOpacity: on ? 0.75 : 0.3,
+        fillOpacity: eligible ? (on ? 0.75 : 0.3) : 0.08,
       });
     }
   }, [roofs, checked]);

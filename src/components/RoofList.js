@@ -59,14 +59,30 @@ function RoofList({
             style={{ opacity: tooSmall ? 0.6 : 1 }}
           >
             <div className="flex items-start gap-3 p-4">
-              <input
-                type="checkbox"
-                id={`roof-${roof.id}`}
-                className="mt-1 h-4 w-4 accent-[var(--accent)]"
-                checked={on}
-                disabled={tooSmall}
-                onChange={(e) => onToggle(roof.id, e.target.checked)}
-              />
+              {/* En for liten flate er ikke et valg brukeren kan ta — den
+                  vises som utkrysset i stedet for som en avslått boks man
+                  lurer på hvorfor ikke lar seg hake av. */}
+              {tooSmall ? (
+                <span
+                  aria-hidden
+                  title="For liten flate — ikke med i beregningen"
+                  className="mt-1 flex h-4 w-4 items-center justify-center rounded border text-[11px] font-bold leading-none"
+                  style={{
+                    borderColor: "var(--line)",
+                    color: "var(--ink-soft)",
+                  }}
+                >
+                  ×
+                </span>
+              ) : (
+                <input
+                  type="checkbox"
+                  id={`roof-${roof.id}`}
+                  className="mt-1 h-4 w-4 accent-[var(--accent)]"
+                  checked={on}
+                  onChange={(e) => onToggle(roof.id, e.target.checked)}
+                />
+              )}
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -75,8 +91,12 @@ function RoofList({
                     style={{ background: roof.rating.color }}
                   />
                   <label
-                    htmlFor={`roof-${roof.id}`}
-                    className="cursor-pointer text-sm font-semibold"
+                    htmlFor={tooSmall ? undefined : `roof-${roof.id}`}
+                    className="text-sm font-semibold"
+                    style={{
+                      cursor: tooSmall ? "default" : "pointer",
+                      textDecoration: tooSmall ? "line-through" : "none",
+                    }}
                   >
                     Tak {i + 1}
                   </label>
@@ -85,13 +105,13 @@ function RoofList({
                     helning · {nb(roof.area)} m²
                   </span>
                   <span className="tag whitespace-nowrap">
-                    {roof.rating.label}
+                    {tooSmall ? "Ikke med i beregningen" : roof.rating.label}
                   </span>
                 </div>
 
                 <p className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
                   {tooSmall
-                    ? `For liten flate — det er bare plass til ${roof.maxPanels} paneler.`
+                    ? `For liten flate — bare plass til ${roof.maxPanels} paneler, og minst ${minPanels} skal til. Panelene her telles ikke med.`
                     : on
                       ? `${count} av ${roof.maxPanels} paneler · ${
                           roof.efficiencyPerPanel

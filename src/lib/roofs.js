@@ -22,6 +22,15 @@ import {
 /** Below this count the system is not worth quoting. */
 export const MIN_PANELS = 6;
 
+/**
+ * En takflate teller bare med når den har plass til nok paneler.
+ *
+ * For små flater ble tidligere haket av automatisk og la paneler til totalen
+ * brukeren ikke fikk fjernet fra listen. Regelen bor her, slik at listen,
+ * kartet og summeringen ikke kan komme i utakt.
+ */
+export const isRoofEligible = (roof) => (roof?.maxPanels ?? 0) >= MIN_PANELS;
+
 /** Panel dimensions used when estimating capacity for a drawn roof. */
 const PANEL_LENGTH_M = 1.1;
 const PANEL_DEPTH_M = 1.7;
